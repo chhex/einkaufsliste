@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: einkaufsliste-db
+    environment:
+      POSTGRES_DB: einkaufsliste
+      POSTGRES_USER: einkaufsliste
+      POSTGRES_PASSWORD: einkaufsliste
+    ports:
+      - "5432:5432"
+    volumes:
+      - einkaufsliste-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U einkaufsliste"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: einkaufsliste-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/einkaufsliste
+      DB_USER: einkaufsliste
+      DB_PASSWORD: einkaufsliste
+    ports:
+      - "8080:8080"
+
+volumes:
+  einkaufsliste-db-data:
