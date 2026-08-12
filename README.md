@@ -41,13 +41,13 @@ den Backend-Port 8080.
 Das Projekt wird iterativ in 7 Schritten aufgebaut (siehe Anforderungsdokument,
 Abschnitt "Entwicklungsprozess"):
 
-1. Projektgerüst → GitHub
-2. Docker-Datenbank, testen, deployen
-3. Daten-Access-Layer, testen
-4. Services, testen
-5. REST-Services, testen, deployen
-6. Client mit Mock-Backend, testen, deployen
-7. Client + echtes Backend, testen, deployen
+1. ✅ Projektgerüst → GitHub
+2. ⏳ Docker-Datenbank, testen, deployen
+3. ⏳ Daten-Access-Layer, testen
+4. ⏳ Services, testen
+5. ⏳ REST-Services, testen, deployen
+6. ⏳ Client mit Mock-Backend, testen, deployen
+7. ⏳ Client + echtes Backend, testen, deployen
 
 ## Deployment
 

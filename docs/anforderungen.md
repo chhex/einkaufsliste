@@ -95,6 +95,7 @@ Unit (erweiterbar, vorbefüllt) {
 | Deployment Backend + DB | Render (Dockerfile-basiert, managed Postgres inkl. Backups; guter Free-Einstieg, gute EU-Nähe, Cold-Start nach Inaktivität bei privater Nutzung vernachlässigbar) |
 | Lokale Entwicklung | docker-compose (Postgres + Spring Boot), 1:1 auf Render übertragbar |
 | DB-Migration | Flyway (Community Edition) — plain SQL, passt zum Single-Database-Setup (Postgres), kein Multi-DB-Bedarf |
+| DB-User-Trennung | Admin-User (besitzt Schema, führt Flyway-Migrationen aus) + separater Schema-/App-User (nur DML-Rechte: SELECT/INSERT/UPDATE/DELETE, keine DDL-Rechte) für die Laufzeit-Verbindung der App |
 | Repo-Struktur | Monorepo (`backend/`, `frontend/`, `docker-compose.yml` im Root); Render/Vercel nutzen Root-Directory-Einstellung |
 
 ## 5. Entwicklungsprozess (iterativ)

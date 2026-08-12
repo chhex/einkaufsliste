@@ -4,14 +4,20 @@ services:
     container_name: einkaufsliste-db
     environment:
       POSTGRES_DB: einkaufsliste
-      POSTGRES_USER: einkaufsliste
-      POSTGRES_PASSWORD: einkaufsliste
+      # Admin-User: besitzt das Schema, wird von Flyway fuer Migrationen genutzt
+      POSTGRES_USER: einkaufsliste_admin
+      POSTGRES_PASSWORD: einkaufsliste_admin
+      # App-User: wird vom 01-create-app-user.sh Init-Skript angelegt,
+      # bekommt nur DML-Rechte (SELECT/INSERT/UPDATE/DELETE), keine DDL-Rechte
+      APP_DB_USER: einkaufsliste_app
+      APP_DB_PASSWORD: einkaufsliste_app
     ports:
       - "5432:5432"
     volumes:
       - einkaufsliste-db-data:/var/lib/postgresql/data
+      - ./backend/db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U einkaufsliste"]
+      test: ["CMD-SHELL", "pg_isready -U einkaufsliste_admin -d einkaufsliste"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,8 +31,10 @@ services:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://db:5432/einkaufsliste
-      DB_USER: einkaufsliste
-      DB_PASSWORD: einkaufsliste
+      DB_ADMIN_USER: einkaufsliste_admin
+      DB_ADMIN_PASSWORD: einkaufsliste_admin
+      DB_APP_USER: einkaufsliste_app
+      DB_APP_PASSWORD: einkaufsliste_app
     ports:
       - "8080:8080"
 

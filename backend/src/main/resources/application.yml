@@ -2,19 +2,24 @@ spring:
   application:
     name: einkaufsliste-backend
 
+  # Laufzeit-Verbindung: eingeschraenkter Schema-/App-User (nur DML, keine DDL-Rechte)
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/einkaufsliste}
-    username: ${DB_USER:einkaufsliste}
-    password: ${DB_PASSWORD:einkaufsliste}
+    username: ${DB_APP_USER:einkaufsliste_app}
+    password: ${DB_APP_PASSWORD:einkaufsliste_app}
 
   jpa:
     hibernate:
       ddl-auto: validate   # Schema wird ausschliesslich ueber Flyway verwaltet
     open-in-view: false
 
+  # Migrationen laufen ueber den Admin-User, der das Schema besitzt
   flyway:
     enabled: true
     locations: classpath:db/migration
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/einkaufsliste}
+    user: ${DB_ADMIN_USER:einkaufsliste_admin}
+    password: ${DB_ADMIN_PASSWORD:einkaufsliste_admin}
 
 server:
   port: ${PORT:8080}
