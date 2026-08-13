@@ -21,7 +21,9 @@ frontend/.vite/
 # --- Env / Secrets ---
 .env
 .env.local
+.env.render
 *.env
 
 # --- Docker ---
 docker-compose.override.yml
+.env.render.example

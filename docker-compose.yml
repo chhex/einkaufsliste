@@ -3,21 +3,19 @@ services:
     image: postgres:17-alpine
     container_name: einkaufsliste-db
     environment:
-      POSTGRES_DB: einkaufsliste
-      # Admin-User: besitzt das Schema, wird von Flyway fuer Migrationen genutzt
-      POSTGRES_USER: einkaufsliste_admin
-      POSTGRES_PASSWORD: einkaufsliste_admin
-      # App-User: wird vom 01-create-app-user.sh Init-Skript angelegt,
-      # bekommt nur DML-Rechte (SELECT/INSERT/UPDATE/DELETE), keine DDL-Rechte
-      APP_DB_USER: einkaufsliste_app
-      APP_DB_PASSWORD: einkaufsliste_app
+      POSTGRES_DB: ${DB_NAME:-einkaufsliste}
+      # Admin-User: besitzt das Schema, wird von Flyway fuer Migrationen genutzt.
+      # Entspricht dem, was eine gemanagte DB (z.B. Render) automatisch
+      # bereitstellen wuerde.
+      POSTGRES_USER: ${DB_ADMIN_USER:?bitte .env aus .env.example erstellen}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?bitte .env aus .env.example erstellen}
     ports:
       - "5432:5432"
     volumes:
       - einkaufsliste-db-data:/var/lib/postgresql/data
-      - ./backend/db-init:/docker-entrypoint-initdb.d:ro
+      - ./backend/db-init:/scripts:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U einkaufsliste_admin -d einkaufsliste"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-einkaufsliste_admin} -d ${DB_NAME:-einkaufsliste}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,11 +28,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:postgresql://db:5432/einkaufsliste
-      DB_ADMIN_USER: einkaufsliste_admin
-      DB_ADMIN_PASSWORD: einkaufsliste_admin
-      DB_APP_USER: einkaufsliste_app
-      DB_APP_PASSWORD: einkaufsliste_app
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-einkaufsliste}
+      DB_ADMIN_USER: ${DB_ADMIN_USER:?bitte .env aus .env.example erstellen}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:?bitte .env aus .env.example erstellen}
+      DB_APP_USER: ${DB_APP_USER:?bitte .env aus .env.example erstellen}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?bitte .env aus .env.example erstellen}
     ports:
       - "8080:8080"
 
