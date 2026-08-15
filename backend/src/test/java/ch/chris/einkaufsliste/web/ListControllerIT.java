@@ -8,15 +8,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * TestSecurityConfig (test-Profil) laesst zwar alle Requests durch, aber
+ * @AuthenticationPrincipal braucht trotzdem eine gesetzte Authentication in
+ * der Request-MockMvc-Chain - simuliert hier per authentication(...)
+ * Post-Processor, ohne echten Google-Login/JWT.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -31,13 +41,18 @@ class ListControllerIT extends AbstractIntegrationTest {
     @Autowired
     private AppUserRepository appUserRepository;
 
+    private static UsernamePasswordAuthenticationToken authFor(Long userId) {
+        return new UsernamePasswordAuthenticationToken(userId, null, List.of());
+    }
+
     @Test
     void createGefolgtVonGetLiefertDieErstellteListe() throws Exception {
         AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "x@x.com", "X"));
 
-        String createBody = objectMapper.writeValueAsString(new CreateListRequestJson("Migros", owner.getId()));
+        String createBody = objectMapper.writeValueAsString(new CreateListRequestJson("Migros"));
 
         String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
                         .contentType("application/json")
                         .content(createBody))
                 .andExpect(status().isCreated())
@@ -55,9 +70,10 @@ class ListControllerIT extends AbstractIntegrationTest {
     @Test
     void createMitLeeremNamenLiefert400() throws Exception {
         AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "y@y.com", "Y"));
-        String body = objectMapper.writeValueAsString(new CreateListRequestJson("", owner.getId()));
+        String body = objectMapper.writeValueAsString(new CreateListRequestJson(""));
 
         mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
                         .contentType("application/json")
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -70,19 +86,21 @@ class ListControllerIT extends AbstractIntegrationTest {
         AppUser andererUser = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "a@a.com", "A"));
 
         mockMvc.perform(post("/api/lists")
+                .with(authentication(authFor(owner.getId())))
                 .contentType("application/json")
-                .content(objectMapper.writeValueAsString(new CreateListRequestJson("Meine Liste", owner.getId()))));
+                .content(objectMapper.writeValueAsString(new CreateListRequestJson("Meine Liste"))));
         mockMvc.perform(post("/api/lists")
+                .with(authentication(authFor(andererUser.getId())))
                 .contentType("application/json")
-                .content(objectMapper.writeValueAsString(new CreateListRequestJson("Fremde Liste", andererUser.getId()))));
+                .content(objectMapper.writeValueAsString(new CreateListRequestJson("Fremde Liste"))));
 
-        mockMvc.perform(get("/api/lists").param("userId", owner.getId().toString()))
+        mockMvc.perform(get("/api/lists").with(authentication(authFor(owner.getId()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].name").value("Meine Liste"));
     }
 
-    private record CreateListRequestJson(String name, Long ownerId) {
+    private record CreateListRequestJson(String name) {
     }
 
 }

@@ -24,6 +24,18 @@ spring:
 server:
   port: ${PORT:8080}
 
+app:
+  jwt:
+    # ACHTUNG: Default nur fuer lokale Entwicklung - in Produktion (Render)
+    # MUSS JWT_SECRET als eigene, zufaellige, geheime Env-Var gesetzt werden.
+    secret: ${JWT_SECRET:dev-only-insecure-secret-change-me-in-production-32bytes-min}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}
+  google:
+    # Google-Cloud-OAuth2-Client-ID (Web Application), autorisiert fuer die
+    # Frontend-Origin. Wird gebraucht, um zu verifizieren, dass ein
+    # eingehendes Google-ID-Token wirklich fuer UNSERE App ausgestellt wurde.
+    client-id: ${GOOGLE_CLIENT_ID:}
+
 management:
   endpoints:
     web:

@@ -33,6 +33,8 @@ services:
       DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:?bitte .env aus .env.example erstellen}
       DB_APP_USER: ${DB_APP_USER:?bitte .env aus .env.example erstellen}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?bitte .env aus .env.example erstellen}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-in-production-32bytes-min}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     ports:
       - "8080:8080"
 

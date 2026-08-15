@@ -90,7 +90,51 @@ schon bei `mvn test`.
    ```
 3. Backend als Web Service anlegen (Root Directory `backend/`, Dockerfile wird erkannt)
 4. Env-Vars im Render-Dashboard setzen: `DB_URL`, `DB_ADMIN_USER`/`DB_ADMIN_PASSWORD`
-   (von Render), `DB_APP_USER`/`DB_APP_PASSWORD` (aus `.env.render`, Schritt 2)
+   (von Render), `DB_APP_USER`/`DB_APP_PASSWORD` (aus `.env.render`, Schritt 2),
+   `JWT_SECRET` (eigener langer Zufallsstring, z. B. `openssl rand -base64 48` —
+   **nicht** der unsichere Default aus `application.yml`), `GOOGLE_CLIENT_ID`
+   (siehe Abschnitt "Auth" unten)
+
+## Auth
+
+Frontend macht den eigentlichen Google-Login (Google Identity Services),
+schickt nur das resultierende ID-Token an `POST /api/auth/google`. Backend
+verifiziert es, provisioniert/findet den User (`UserService`), stellt ein
+eigenes JWT aus. Alle weiteren Requests: `Authorization: Bearer <token>`.
+
+- **Google-Cloud-Setup**: OAuth2-Client-ID vom Typ "Web Application" anlegen,
+  Frontend-Origin(s) autorisieren, Client-ID als `GOOGLE_CLIENT_ID` setzen
+- **`app/api/dev/login`**: provisorischer Ersatz für den echten Google-Login
+  (liefert ebenfalls ein JWT) — nützlich für curl-Tests, **muss vor
+  breiterer Nutzung entfernt oder abgesichert werden**
+- **Tests**: eigenes `test`-Spring-Profil (`TestSecurityConfig`, permissiv)
+  aktiv über `@ActiveProfiles("test")` in `AbstractIntegrationTest` — IT-/
+  MockMvc-Tests brauchen keinen echten Google-Login
+
+### API per curl testen
+
+```bash
+chmod +x scripts/test-api.sh
+./scripts/test-api.sh                                          # lokal
+./scripts/test-api.sh https://einkaufsliste-gnrc.onrender.com   # Render
+```
+
+### Echten Google-Login testen (ohne Svelte-Client)
+
+Standalone-Testseite (`scripts/auth-test/index.html`) für den kompletten
+echten Fluss (Google-Button → ID-Token → Backend-Verifikation → JWT):
+
+```bash
+cd scripts/auth-test
+python3 -m http.server 8000
+# Browser: http://localhost:8000
+```
+
+Voraussetzungen:
+- `GOOGLE_CLIENT_ID` muss im Backend gesetzt sein (`.env` bzw. Render-Env-Var)
+- In der Google-Cloud-Console bei der OAuth2-Client-ID unter "Authorized
+  JavaScript origins" `http://localhost:8000` eintragen
+- Backend-URL und Client-ID auf der Testseite selbst eintragen (Felder oben)
 
 ## Entwicklungsprozess
 

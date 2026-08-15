@@ -1,5 +1,6 @@
 package ch.chris.einkaufsliste.domain;
 
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -9,6 +10,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * verdrahtet Spring Boot (Datasource + Flyway) darauf. So laufen Repository-/
  * Service-Tests gegen dieselbe Engine wie in Produktion (kein H2-Ersatz),
  * inkl. echter Ausfuehrung von V1-V3-Migrationen.
+ * <p>
+ * @ActiveProfiles("test") aktiviert TestSecurityConfig (permissiv) statt der
+ * echten JWT-Bearer-Auth (SecurityConfig, @Profile("!test")) - IT-Tests
+ * brauchen so keine echten Google-Logins, um API-Endpunkte zu erreichen.
  * <p>
  * SINGLETON-CONTAINER-PATTERN: der Container wird in einem statischen
  * Initializer-Block EINMALIG gestartet und NIE explizit gestoppt. Das ist
@@ -21,6 +26,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * Container automatisch beim JVM-Ende auf, ein manuelles stop() ist nicht
  * noetig.
  */
+@ActiveProfiles("test")
 public abstract class AbstractIntegrationTest {
 
     static final PostgreSQLContainer<?> POSTGRES;

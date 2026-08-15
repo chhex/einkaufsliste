@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Einkaufsliste - Google-Login-Test</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.3rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input { width: 100%; padding: 0.4rem; box-sizing: border-box; }
+    pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; white-space: pre-wrap; }
+    button { margin-top: 0.5rem; padding: 0.4rem 0.8rem; cursor: pointer; }
+    .section { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>🛒 Einkaufsliste – Google-Login-Test</h1>
+  <p>
+    Standalone-Testseite fuer den ECHTEN Google-Login-Fluss (nicht ueber
+    <code>/api/dev/login</code>) - unabhaengig vom Svelte-Client, der noch
+    nicht existiert (Schritt 6/7).
+  </p>
+
+  <label>Backend-URL</label>
+  <input id="baseUrl" value="http://localhost:8080" />
+
+  <label>Google Client-ID</label>
+  <input id="clientId" placeholder="....apps.googleusercontent.com" />
+  <button onclick="initGoogleButton()">Google-Button anzeigen</button>
+
+  <div id="googleButtonContainer" style="margin-top: 1rem;"></div>
+
+  <div class="section">
+    <h2>1. Google-ID-Token (nach Login)</h2>
+    <pre id="idTokenOutput">-</pre>
+  </div>
+
+  <div class="section">
+    <h2>2. Backend-Antwort (POST /api/auth/google)</h2>
+    <pre id="authResponseOutput">-</pre>
+  </div>
+
+  <div class="section">
+    <h2>3. Authentifizierten Request testen</h2>
+    <button onclick="testAuthenticatedRequest()">GET /api/lists (mit JWT)</button>
+    <pre id="apiTestOutput">-</pre>
+  </div>
+
+  <script>
+    let currentJwt = null;
+
+    function initGoogleButton() {
+      const clientId = document.getElementById('clientId').value.trim();
+      if (!clientId) {
+        alert('Bitte Client-ID eintragen.');
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('googleButtonContainer'),
+        { theme: 'outline', size: 'large' }
+      );
+    }
+
+    async function handleGoogleCredential(response) {
+      const idToken = response.credential;
+      document.getElementById('idTokenOutput').textContent = idToken;
+
+      const baseUrl = document.getElementById('baseUrl').value.trim();
+      try {
+        const res = await fetch(`${baseUrl}/api/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
+        const data = await res.json();
+        document.getElementById('authResponseOutput').textContent =
+          `HTTP ${res.status}\n` + JSON.stringify(data, null, 2);
+
+        if (res.ok) {
+          currentJwt = data.token;
+        }
+      } catch (e) {
+        document.getElementById('authResponseOutput').textContent = 'Fehler: ' + e;
+      }
+    }
+
+    async function testAuthenticatedRequest() {
+      const baseUrl = document.getElementById('baseUrl').value.trim();
+      const output = document.getElementById('apiTestOutput');
+
+      if (!currentJwt) {
+        output.textContent = 'Kein JWT vorhanden - zuerst einloggen.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${baseUrl}/api/lists`, {
+          headers: { Authorization: `Bearer ${currentJwt}` }
+        });
+        const data = await res.json();
+        output.textContent = `HTTP ${res.status}\n` + JSON.stringify(data, null, 2);
+      } catch (e) {
+        output.textContent = 'Fehler: ' + e;
+      }
+    }
+  </script>
+</body>
+</html>

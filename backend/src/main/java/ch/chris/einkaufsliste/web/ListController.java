@@ -11,23 +11,29 @@ import ch.chris.einkaufsliste.web.dto.ListResponse;
 import ch.chris.einkaufsliste.web.dto.MemberResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
 
 /**
- * TODO: "userId" kommt aktuell noch als Query-Parameter, weil Google-OAuth2
- * (SecurityConfig ist noch provisorisch offen) erst spaeter verdrahtet wird.
- * Sobald das steht, wird der User aus dem authentifizierten Principal
- * gelesen statt explizit uebergeben.
+ * "userId" kommt hier NIE mehr vom Client (Query/Body) fuer die Frage "wer
+ * bin ich" - immer ueber @AuthenticationPrincipal aus dem verifizierten JWT
+ * (siehe JwtAuthenticationFilter). Waere es weiterhin ein Client-Parameter,
+ * koennte sich ein eingeloggter User als beliebiger anderer User ausgeben.
+ * <p>
+ * TODO (Autorisierungs-Luecke, noch offen): aktuell kann JEDER eingeloggte
+ * User JEDE Liste per ID aendern/archivieren/Mitglieder verwalten, wenn er
+ * deren ID kennt - es gibt noch keine Pruefung "ist der User Owner/Member
+ * dieser Liste". Fuer den privaten Nutzungsrahmen (Du + Familie) aktuell
+ * vertretbar, sollte aber vor breiterer Nutzung ergaenzt werden.
  */
 @RestController
 @RequestMapping("/api/lists")
@@ -42,15 +48,16 @@ public class ListController {
     }
 
     @PostMapping
-    public ResponseEntity<ListResponse> create(@Valid @RequestBody CreateListRequest request) {
-        AppUser owner = userService.get(request.ownerId());
+    public ResponseEntity<ListResponse> create(@AuthenticationPrincipal Long userId,
+                                                @Valid @RequestBody CreateListRequest request) {
+        AppUser owner = userService.get(userId);
         ShoppingList list = listService.create(request.name(), owner);
         return ResponseEntity.created(URI.create("/api/lists/" + list.getId()))
                 .body(ListResponse.from(list));
     }
 
     @GetMapping
-    public List<ListResponse> getAccessibleLists(@RequestParam Long userId) {
+    public List<ListResponse> getAccessibleLists(@AuthenticationPrincipal Long userId) {
         return listService.getAccessibleByUser(userId).stream()
                 .map(ListResponse::summary)
                 .toList();

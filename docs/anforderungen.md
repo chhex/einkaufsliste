@@ -97,6 +97,7 @@ Unit (erweiterbar, vorbefüllt) {
 | Deployment Frontend | Vercel (GitHub-Anbindung, wie beim andi-Projekt) |
 | Deployment Backend + DB | Render (Dockerfile-basiert, managed Postgres inkl. Backups; guter Free-Einstieg, gute EU-Nähe, Cold-Start nach Inaktivität bei privater Nutzung vernachlässigbar) |
 | REST-API | DTOs (Java Records) statt Entities über die Grenze — Entities verlassen nie die Transaktion; einheitliches Fehlerformat via @RestControllerAdvice (IllegalArgumentException → 400); `userId` aktuell als Query-/Body-Parameter (Platzhalter bis Google-OAuth2 verdrahtet ist, danach aus dem authentifizierten Principal) |
+| Auth | Frontend macht den Google-Login (Google Identity Services), schickt nur das ID-Token ans Backend; Backend verifiziert es (google-api-client), provisioniert/findet den User, stellt ein eigenes, stateless JWT aus (jjwt, HMAC) für alle weiteren API-Aufrufe. Kein Server-Session-Speicher nötig (robust bei Render-Cold-Starts). Separates `test`-Spring-Profil (TestSecurityConfig, permissiv) für IT-/Unit-Tests — kein echter Google-Login beim Testen nötig |
 | Lokale Entwicklung | docker-compose (Postgres + Spring Boot), 1:1 auf Render übertragbar |
 | DB-Migration | Flyway (Community Edition) — plain SQL, passt zum Single-Database-Setup (Postgres), kein Multi-DB-Bedarf |
 | DB-User-Trennung | Admin-User (besitzt Schema, führt Flyway-Migrationen aus) + separater Schema-/App-User (nur DML-Rechte: SELECT/INSERT/UPDATE/DELETE, keine DDL-Rechte) für die Laufzeit-Verbindung der App |
@@ -147,3 +148,4 @@ Rezept-/App-Exporte (z. B. NYT Cooking "Grocery List") sollen sich per Copy-Past
 - Soll es eine Undo-Funktion beim versehentlichen Abhaken/Archivieren geben?
 - Reihenfolge der Items **innerhalb** einer Kategorie: frei per Drag&Drop oder alphabetisch?
 - Kein hartes Löschen von Listen über die App — stattdessen später ein Offline-Job, der archivierte Listen nach längerer Inaktivität (z. B. 6 Monate) automatisch aufräumt
+- **Autorisierungs-Lücke**: Authentifizierung (JWT + Google-Login) ist implementiert, aber es gibt noch keine Prüfung, ob ein User Owner/Member der Liste ist, die er per ID anspricht — jeder eingeloggte User kann aktuell jede Liste ändern, wenn er deren ID kennt. Für den privaten Rahmen (Familie) vertretbar, sollte vor breiterer Nutzung ergänzt werden
