@@ -5,6 +5,8 @@ import ch.chris.einkaufsliste.domain.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * CRUD fuer die Kategorien-Vorschlagsliste (kein FK von Item aus - siehe
  * Kommentar in Category.java). Bewusst simpel, kein Aggregat.
@@ -24,6 +26,11 @@ public class CategoryService {
             throw new IllegalArgumentException("Kategorie '" + name + "' existiert bereits");
         }
         return categoryRepository.save(new Category(name));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Category> list() {
+        return categoryRepository.findAll();
     }
 
     @Transactional

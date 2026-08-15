@@ -8,6 +8,7 @@ import ch.chris.einkaufsliste.domain.repository.ShoppingListRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -29,6 +30,19 @@ public class ListService {
     @Transactional
     public ShoppingList create(String name, AppUser owner) {
         return shoppingListRepository.save(new ShoppingList(name, owner));
+    }
+
+    @Transactional(readOnly = true)
+    public ShoppingList get(Long listId) {
+        return getOrThrow(listId);
+    }
+
+    /**
+     * Alle Listen, auf die der User Zugriff hat (Owner ODER Member).
+     */
+    @Transactional(readOnly = true)
+    public List<ShoppingList> getAccessibleByUser(Long userId) {
+        return shoppingListRepository.findAccessibleByUserId(userId);
     }
 
     @Transactional

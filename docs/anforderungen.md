@@ -96,6 +96,7 @@ Unit (erweiterbar, vorbefüllt) {
 | Sync | Polling-Intervall (z. B. alle 5–10s), kein WebSocket vorerst |
 | Deployment Frontend | Vercel (GitHub-Anbindung, wie beim andi-Projekt) |
 | Deployment Backend + DB | Render (Dockerfile-basiert, managed Postgres inkl. Backups; guter Free-Einstieg, gute EU-Nähe, Cold-Start nach Inaktivität bei privater Nutzung vernachlässigbar) |
+| REST-API | DTOs (Java Records) statt Entities über die Grenze — Entities verlassen nie die Transaktion; einheitliches Fehlerformat via @RestControllerAdvice (IllegalArgumentException → 400); `userId` aktuell als Query-/Body-Parameter (Platzhalter bis Google-OAuth2 verdrahtet ist, danach aus dem authentifizierten Principal) |
 | Lokale Entwicklung | docker-compose (Postgres + Spring Boot), 1:1 auf Render übertragbar |
 | DB-Migration | Flyway (Community Edition) — plain SQL, passt zum Single-Database-Setup (Postgres), kein Multi-DB-Bedarf |
 | DB-User-Trennung | Admin-User (besitzt Schema, führt Flyway-Migrationen aus) + separater Schema-/App-User (nur DML-Rechte: SELECT/INSERT/UPDATE/DELETE, keine DDL-Rechte) für die Laufzeit-Verbindung der App |

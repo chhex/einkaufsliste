@@ -103,7 +103,7 @@ Abschnitt "Entwicklungsprozess"):
    - 3a ✅ Domain-Schema (Flyway-Migration), lokal getestet
    - 3b ✅ JPA-Entities + Repositories, getestet via Testcontainers
 4. ✅ Services (UserService, ListService, ItemService, UnitService, CategoryService, ImportService), getestet
-5. ⏳ REST-Services, testen, deployen
+5. ✅ REST-Services (Controller, DTOs), lokal getestet — Deployment auf Render noch offen (aktueller Render-Stand ist Schritt 2/3)
 6. ⏳ Client mit Mock-Backend, testen, deployen
 7. ⏳ Client + echtes Backend, testen, deployen
 

@@ -5,6 +5,8 @@ import ch.chris.einkaufsliste.domain.repository.UnitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * CRUD fuer die Einheiten-Vorschlagsliste (kein FK von Item aus - siehe
  * Kommentar in Unit.java). Bewusst simpel, kein Aggregat.
@@ -24,6 +26,11 @@ public class UnitService {
             throw new IllegalArgumentException("Einheit '" + name + "' existiert bereits");
         }
         return unitRepository.save(new Unit(name, abbreviation));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Unit> list() {
+        return unitRepository.findAll();
     }
 
     @Transactional

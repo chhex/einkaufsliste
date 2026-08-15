@@ -32,6 +32,12 @@ public class UserService {
                 .orElseGet(() -> appUserRepository.save(new AppUser(googleId, email, name)));
     }
 
+    @Transactional(readOnly = true)
+    public AppUser get(Long userId) {
+        return appUserRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User nicht gefunden: " + userId));
+    }
+
     /**
      * Loescht einen User hart. ACHTUNG: cascaded per DB-FK (ON DELETE CASCADE)
      * auf alle Listen, deren Owner dieser User ist, inkl. deren Items -
