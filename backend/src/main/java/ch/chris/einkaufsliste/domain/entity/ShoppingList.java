@@ -93,8 +93,12 @@ public class ShoppingList {
     }
 
     public void removeItem(Item item) {
+        // Bewusst KEIN item.detachFromList() hier: orphanRemoval=true kuemmert
+        // sich beim Flush selbststaendig um das DELETE. Wuerden wir die
+        // Objektreferenz zusaetzlich manuell nullen, wuerde Hibernate vorher
+        // ein UPDATE list_id=NULL versuchen und an der NOT-NULL-Constraint
+        // scheitern.
         items.remove(item);
-        item.detachFromList();
     }
 
     public ListMember addMember(AppUser user) {
@@ -104,8 +108,38 @@ public class ShoppingList {
     }
 
     public void removeMember(ListMember member) {
+        // Analog zu removeItem(): kein manuelles detachFromList() noetig,
+        // orphanRemoval erledigt das DELETE selbststaendig.
         members.remove(member);
-        member.detachFromList();
+    }
+
+    /**
+     * Archiviert die Liste (Status -> ARCHIVIERT, archivedAt gesetzt).
+     */
+    public void archive() {
+        this.status = ListStatus.ARCHIVIERT;
+        this.archivedAt = OffsetDateTime.now();
+    }
+
+    /**
+     * Reaktiviert eine archivierte Liste: Status -> AKTIV, archivedAt
+     * zurueckgesetzt, UND alle Haken werden zurueckgesetzt (Anforderung:
+     * "Haken gehen bei Reaktivierung alle weg").
+     */
+    public void reactivate() {
+        this.status = ListStatus.AKTIV;
+        this.archivedAt = null;
+        items.forEach(item -> item.setAbgehakt(false));
+    }
+
+    /**
+     * True, wenn die Liste mindestens ein Item hat und ALLE abgehakt sind -
+     * die Bedingung, unter der automatisch archiviert wird (siehe
+     * ListService.archiveIfAllItemsChecked, aufgerufen nach jedem Abhaken).
+     * Eine leere Liste gilt bewusst NICHT als "alle abgehakt".
+     */
+    public boolean areAllItemsChecked() {
+        return !items.isEmpty() && items.stream().allMatch(Item::isAbgehakt);
     }
 
     public Long getId() {

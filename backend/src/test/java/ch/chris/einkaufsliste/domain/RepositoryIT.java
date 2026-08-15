@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class RepositoryIntegrationTest extends AbstractIntegrationTest {
+class RepositoryIT extends AbstractIntegrationTest {
 
     @Autowired
     private AppUserRepository appUserRepository;

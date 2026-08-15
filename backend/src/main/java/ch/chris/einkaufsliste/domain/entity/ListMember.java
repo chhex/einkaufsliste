@@ -58,10 +58,6 @@ public class ListMember {
         this.user = user;
     }
 
-    void detachFromList() {
-        this.list = null;
-    }
-
     public ListMemberId getId() {
         return id;
     }

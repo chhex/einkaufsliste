@@ -101,6 +101,7 @@ Unit (erweiterbar, vorbefüllt) {
 | DB-User-Trennung | Admin-User (besitzt Schema, führt Flyway-Migrationen aus) + separater Schema-/App-User (nur DML-Rechte: SELECT/INSERT/UPDATE/DELETE, keine DDL-Rechte) für die Laufzeit-Verbindung der App |
 | App-User-Bootstrap | Einmaliges, plattformunabhängiges Skript (`bootstrap-app-user.sh`, Standard-`psql`-Env-Vars) statt automatischem Docker-Init — funktioniert identisch lokal und bei gemanagten DBs (Render), die kein Init-Skript unterstützen; Admin-User wird von der jeweiligen Plattform bereitgestellt (Docker-Image bzw. Render) |
 | Secrets | Lokal über `.env` (nicht committed, `.env.example` als Vorlage im Repo); bei Render über Dashboard-Env-Vars — nirgends Klartext-Credentials im Code/Repo |
+| Test-Kategorien | `*Test` (reine Unit-Tests, kein Docker, laufen bei `mvn test`) vs. `*IT` (Testcontainers-Integrationstests, laufen bei `mvn verify`) — Domänenlogik in Entities wird so ohne Docker-Abhängigkeit testbar |
 | Repo-Struktur | Monorepo (`backend/`, `frontend/`, `docker-compose.yml` im Root); Render/Vercel nutzen Root-Directory-Einstellung |
 
 ## 5. Entwicklungsprozess (iterativ)
@@ -144,3 +145,4 @@ Rezept-/App-Exporte (z. B. NYT Cooking "Grocery List") sollen sich per Copy-Past
 - Einladung von Mitgliedern: per E-Mail-Adresse oder Link-Share?
 - Soll es eine Undo-Funktion beim versehentlichen Abhaken/Archivieren geben?
 - Reihenfolge der Items **innerhalb** einer Kategorie: frei per Drag&Drop oder alphabetisch?
+- Kein hartes Löschen von Listen über die App — stattdessen später ein Offline-Job, der archivierte Listen nach längerer Inaktivität (z. B. 6 Monate) automatisch aufräumt

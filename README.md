@@ -62,17 +62,22 @@ npm run dev
 Frontend läuft auf `http://localhost:5173`, proxied `/api`-Requests an
 den Backend-Port 8080.
 
-### Backend-Tests (Testcontainers, benötigt laufendes Docker)
+### Backend-Tests
+
+Zwei Kategorien, per Namenskonvention getrennt:
 
 ```bash
 cd backend
-mvn test
+mvn test      # nur *Test-Klassen: reine Unit-Tests, KEIN Docker nötig, schnell
+mvn verify    # zusätzlich *IT-Klassen: Testcontainers-Integrationstests, braucht laufendes Docker
 ```
 
-Startet automatisch eine temporäre Postgres-Instanz, wendet alle Flyway-
-Migrationen an und testet die Repositories dagegen — unabhängig vom
-`docker-compose`-Setup, kein Bootstrap-Schritt nötig (Testcontainer nutzt
-einen einzigen User für Admin+App).
+`mvn verify` startet automatisch eine temporäre Postgres-Instanz, wendet
+alle Flyway-Migrationen an und testet Repositories/Services dagegen —
+unabhängig vom `docker-compose`-Setup, kein Bootstrap-Schritt nötig
+(Testcontainer nutzt einen einzigen User für Admin+App). Business-Logik,
+die keine Datenbank braucht (z. B. `ShoppingListTest`), läuft dagegen
+schon bei `mvn test`.
 
 ## Deployment auf Render (identischer Bootstrap-Prozess)
 
@@ -93,11 +98,11 @@ Das Projekt wird iterativ in 7 Schritten aufgebaut (siehe Anforderungsdokument,
 Abschnitt "Entwicklungsprozess"):
 
 1. ✅ Projektgerüst → GitHub
-2. ✅ Docker-Datenbank, Admin-/App-User-Trennung, lokal getestet (Render-Deployment noch offen)
+2. ✅ Docker-Datenbank, Admin-/App-User-Trennung, lokal getestet UND auf Render deployt (`https://einkaufsliste-gnrc.onrender.com`)
 3. ✅ Daten-Access-Layer
    - 3a ✅ Domain-Schema (Flyway-Migration), lokal getestet
    - 3b ✅ JPA-Entities + Repositories, getestet via Testcontainers
-4. ⏳ Services, testen
+4. ✅ Services (UserService, ListService, ItemService, UnitService, CategoryService, ImportService), getestet
 5. ⏳ REST-Services, testen, deployen
 6. ⏳ Client mit Mock-Backend, testen, deployen
 7. ⏳ Client + echtes Backend, testen, deployen

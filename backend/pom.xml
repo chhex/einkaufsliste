@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <dependencies>
@@ -102,6 +104,30 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+                Surefire ("mvn test"): laeuft standardmaessig nur gegen
+                **/*Test.java - trifft NICHT auf unsere *IT-Klassen zu,
+                daher braucht Surefire hier keine explizite Exclude-Regel.
+                Reine Unit-Tests (z.B. ShoppingListTest) brauchen kein
+                Docker und laufen so bei jedem "mvn test".
+            -->
+            <!--
+                Failsafe ("mvn verify"): laeuft **/*IT.java - die
+                Testcontainers-basierten Integrationstests, die eine
+                laufende Docker-Engine brauchen.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -69,10 +69,6 @@ public class Item {
         this.einheit = einheit;
     }
 
-    void detachFromList() {
-        this.list = null;
-    }
-
     public Long getId() {
         return id;
     }
