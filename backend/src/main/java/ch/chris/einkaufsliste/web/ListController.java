@@ -9,11 +9,13 @@ import ch.chris.einkaufsliste.web.dto.AddMemberRequest;
 import ch.chris.einkaufsliste.web.dto.CreateListRequest;
 import ch.chris.einkaufsliste.web.dto.ListResponse;
 import ch.chris.einkaufsliste.web.dto.MemberResponse;
+import ch.chris.einkaufsliste.web.dto.UpdateListRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,9 +53,15 @@ public class ListController {
     public ResponseEntity<ListResponse> create(@AuthenticationPrincipal Long userId,
                                                 @Valid @RequestBody CreateListRequest request) {
         AppUser owner = userService.get(userId);
-        ShoppingList list = listService.create(request.name(), owner);
+        ShoppingList list = listService.create(request.name(), request.einkaufsdatum(), owner);
         return ResponseEntity.created(URI.create("/api/lists/" + list.getId()))
                 .body(ListResponse.from(list));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable Long id, @Valid @RequestBody UpdateListRequest request) {
+        listService.update(id, request.name(), request.einkaufsdatum());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
@@ -77,6 +85,12 @@ public class ListController {
     @PostMapping("/{id}/reactivate")
     public ResponseEntity<Void> reactivate(@PathVariable Long id) {
         listService.reactivate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        listService.delete(id);
         return ResponseEntity.noContent().build();
     }
 

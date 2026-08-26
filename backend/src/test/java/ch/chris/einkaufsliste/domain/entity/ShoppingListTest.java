@@ -4,6 +4,7 @@ import ch.chris.einkaufsliste.domain.enums.ListStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -63,6 +64,37 @@ class ShoppingListTest {
         assertThat(a.isAbgehakt()).isFalse();
         assertThat(b.isAbgehakt()).isFalse();
         assertThat(a.getAbgehaktAm()).isNull();
+    }
+
+    @Test
+    void unarchiveDueToItemUncheckReaktiviertOhneAndereHakenZurueckzusetzenUndAktualisiertDatum() {
+        ShoppingList list = new ShoppingList("Migros", owner, LocalDate.of(2020, 1, 1));
+        Item a = list.addItem("Milch", new BigDecimal("1"), "l");
+        Item b = list.addItem("Brot", new BigDecimal("1"), "Stk");
+        a.setAbgehakt(true);
+        b.setAbgehakt(true);
+        list.archive();
+
+        // Nutzer hakt EIN Item wieder auf (Aufrufer setzt das vorher, wie
+        // ItemService.toggleAbgehakt es tut) und ruft dann diese Methode auf
+        b.setAbgehakt(false);
+        list.unarchiveDueToItemUncheck();
+
+        assertThat(list.getStatus()).isEqualTo(ListStatus.AKTIV);
+        assertThat(list.getArchivedAt()).isNull();
+        assertThat(list.getEinkaufsdatum()).isEqualTo(LocalDate.now());
+        assertThat(a.isAbgehakt()).isTrue(); // NICHT zurueckgesetzt, im Gegensatz zu reactivate()
+        assertThat(b.isAbgehakt()).isFalse();
+    }
+
+    @Test
+    void unarchiveDueToItemUncheckIstNoOpWennListeBereitsAktiv() {
+        ShoppingList list = new ShoppingList("Migros", owner, LocalDate.of(2020, 1, 1));
+
+        list.unarchiveDueToItemUncheck();
+
+        assertThat(list.getStatus()).isEqualTo(ListStatus.AKTIV);
+        assertThat(list.getEinkaufsdatum()).isEqualTo(LocalDate.of(2020, 1, 1)); // unveraendert
     }
 
     @Test

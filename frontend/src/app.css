@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* DaisyUI: eine handverlesene Auswahl eingebauter Themes zum Durchschalten
+   (siehe ThemeSwitcher.svelte) statt aller ~30 - hell/dunkel-Paare plus ein
+   paar Charaktere. Erstes Theme ("light") ist der Default. */
+@plugin "daisyui" {
+  themes: light --default, dark, cupcake, forest, dracula, autumn, corporate;
+}

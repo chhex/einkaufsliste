@@ -68,16 +68,18 @@ class ListControllerIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void createMitLeeremNamenLiefert400() throws Exception {
+    void createOhneNamenSetztKeinenNamenUndDefaultetEinkaufsdatumAufHeute() throws Exception {
         AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "y@y.com", "Y"));
-        String body = objectMapper.writeValueAsString(new CreateListRequestJson(""));
+        // Anforderung: Anlegen soll reibungslos gehen, kein Pflicht-Name.
+        String body = "{}";
 
         mockMvc.perform(post("/api/lists")
                         .with(authentication(authFor(owner.getId())))
                         .contentType("application/json")
                         .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.einkaufsdatum").value(java.time.LocalDate.now().toString()));
     }
 
     @Test

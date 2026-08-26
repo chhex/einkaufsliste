@@ -66,18 +66,25 @@ public class ItemService {
     }
 
     /**
-     * Hakt ein Item ab bzw. wieder auf. Beim Abhaken (abgehakt=true) wird
-     * anschliessend geprueft, ob dadurch ALLE Items der Liste abgehakt sind -
-     * falls ja, archiviert ListService die Liste automatisch. Beim
-     * Wiederaufhaken ist diese Pruefung nie noetig (kann per Definition nie
-     * "alle abgehakt" ergeben).
+     * Hakt ein Item ab bzw. wieder auf.
+     * - Abhaken (abgehakt=true): prueft anschliessend, ob dadurch ALLE Items
+     *   der Liste abgehakt sind - falls ja, archiviert ListService die Liste
+     *   automatisch.
+     * - Wiederaufhaken (abgehakt=false): falls die Liste bereits ARCHIVIERT
+     *   war (widersprueclicher Zustand sonst: archivierte Liste mit offenem
+     *   Item), wird sie automatisch reaktiviert - OHNE die anderen Haken
+     *   zurueckzusetzen (andere Semantik als der explizite
+     *   "Reaktivieren"-Button, siehe ShoppingList.unarchiveDueToItemUncheck).
      */
     @Transactional
     public void toggleAbgehakt(Long itemId, boolean abgehakt) {
         Item item = getOrThrow(itemId);
         item.setAbgehakt(abgehakt);
+        Long listId = item.getList().getId();
         if (abgehakt) {
-            listService.archiveIfAllItemsChecked(item.getList().getId());
+            listService.archiveIfAllItemsChecked(listId);
+        } else {
+            listService.reactivateIfArchivedDueToItemUncheck(listId);
         }
     }
 

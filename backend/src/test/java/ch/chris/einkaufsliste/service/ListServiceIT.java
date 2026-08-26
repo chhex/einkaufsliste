@@ -67,7 +67,7 @@ class ListServiceIT extends AbstractIntegrationTest {
 
     @Test
     void createLegtNeueAktiveListeAn() {
-        ShoppingList list = listService.create("Migros", owner());
+        ShoppingList list = listService.create("Migros", null, owner());
 
         assertThat(list.getId()).isNotNull();
         assertThat(list.getStatus()).isEqualTo(ListStatus.AKTIV);
@@ -75,7 +75,7 @@ class ListServiceIT extends AbstractIntegrationTest {
 
     @Test
     void archiveSetztStatusUndZeitstempel() {
-        ShoppingList list = listService.create("Bauhaus", owner());
+        ShoppingList list = listService.create("Bauhaus", null, owner());
 
         listService.archive(list.getId());
         entityManager.flush();
@@ -140,7 +140,7 @@ class ListServiceIT extends AbstractIntegrationTest {
 
     @Test
     void addMemberUndRemoveMemberFunktionieren() {
-        ShoppingList list = listService.create("Gemeinsame Liste", owner());
+        ShoppingList list = listService.create("Gemeinsame Liste", null, owner());
 
         ListMember member = listService.addMember(list.getId(), partner());
         assertThat(member.getUser().getName()).isEqualTo("Partner");
@@ -155,7 +155,7 @@ class ListServiceIT extends AbstractIntegrationTest {
 
     @Test
     void addMemberLehntOwnerAlsMitgliedAb() {
-        ShoppingList list = listService.create("Test", owner());
+        ShoppingList list = listService.create("Test", null, owner());
 
         assertThatThrownBy(() -> listService.addMember(list.getId(), owner()))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -163,7 +163,7 @@ class ListServiceIT extends AbstractIntegrationTest {
 
     @Test
     void resolveSortFieldNutztOverrideWennGesetztSonstListDefault() {
-        ShoppingList list = listService.create("Sortier-Test", owner());
+        ShoppingList list = listService.create("Sortier-Test", null, owner());
         // Owner selbst hat kein Member-Override -> Default der Liste
         assertThat(listService.resolveSortField(list.getId(), owner().getId()))
                 .isEqualTo(SortField.KATEGORIE);
@@ -175,6 +175,39 @@ class ListServiceIT extends AbstractIntegrationTest {
 
         assertThat(listService.resolveSortField(list.getId(), partner().getId()))
                 .isEqualTo(SortField.BEZEICHNUNG);
+    }
+
+    @Test
+    void deleteEntferntListeUndCascadedItems() {
+        ShoppingList list = new ShoppingList("Zu loeschen", owner());
+        list.addItem("Milch", new BigDecimal("1"), "l");
+        list = shoppingListRepository.save(list);
+        Long listId = list.getId();
+
+        listService.delete(listId);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(shoppingListRepository.findById(listId)).isEmpty();
+    }
+
+    @Test
+    void deleteNichtExistierenderListeWirftFehler() {
+        assertThatThrownBy(() -> listService.delete(999999L))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void reactivateIfArchivedDueToItemUncheckReaktiviertNurEinmalArchivierte() {
+        ShoppingList list = listService.create("Test", null, owner());
+        listService.archive(list.getId());
+
+        listService.reactivateIfArchivedDueToItemUncheck(list.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(shoppingListRepository.findById(list.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListStatus.AKTIV);
     }
 
 }

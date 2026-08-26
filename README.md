@@ -55,12 +55,14 @@ Backend läuft danach auf `http://localhost:8080`, Smoke-Test unter
 
 ```bash
 cd frontend
+cp .env.example .env
+# .env: VITE_GOOGLE_CLIENT_ID mit der echten Google-Client-ID füllen
 npm install
 npm run dev
 ```
 
-Frontend läuft auf `http://localhost:5173`, proxied `/api`-Requests an
-den Backend-Port 8080.
+Frontend läuft auf `http://localhost:5173` (in Google Cloud Console als
+"Authorized JavaScript origin" hinterlegt, siehe Abschnitt "Auth" oben).
 
 ### Backend-Tests
 

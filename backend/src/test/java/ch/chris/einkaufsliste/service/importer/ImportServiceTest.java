@@ -24,7 +24,7 @@ class ImportServiceTest {
 
         @Override
         public List<ParsedItem> parse(String rawText) {
-            return List.of(new ParsedItem(rawText, BigDecimal.ONE, "Stk"));
+            return List.of(new ParsedItem(rawText, BigDecimal.ONE, "Stk", null));
         }
     }
 

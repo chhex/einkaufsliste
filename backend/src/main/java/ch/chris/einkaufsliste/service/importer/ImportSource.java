@@ -6,6 +6,7 @@ package ch.chris.einkaufsliste.service.importer;
  * bei aehnlich aussehenden Formaten.
  */
 public enum ImportSource {
-    NYT_COOKING
+    NYT_COOKING,
+    OBSIDIAN_MARKDOWN
     // spaeter z.B. MIGROS_APP, CSV, ...
 }

@@ -1,12 +1,15 @@
 package ch.chris.einkaufsliste.web.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDate;
 
-public record CreateListRequest(
-        @NotBlank String name
-        // ownerId kommt NICHT mehr vom Client (Sicherheitsluecke: sonst
-        // koennte sich ein eingeloggter User als beliebiger anderer User
-        // ausgeben) - siehe ListController: der Owner ist immer der
-        // authentifizierte User aus dem JWT.
-) {
+/**
+ * Beide Felder optional - Anlegen einer Liste soll reibungslos gehen (kein
+ * Pflicht-Name), einkaufsdatum faellt ohne Angabe auf "heute" zurueck
+ * (siehe ShoppingList-Entity-Default).
+ * <p>
+ * ownerId kommt NICHT vom Client (Sicherheitsluecke: sonst koennte sich ein
+ * eingeloggter User als beliebiger anderer User ausgeben) - siehe
+ * ListController: der Owner ist immer der authentifizierte User aus dem JWT.
+ */
+public record CreateListRequest(String name, LocalDate einkaufsdatum) {
 }

@@ -19,7 +19,8 @@ User {
 
 List (Einkaufsliste) {
   id
-  name
+  name: string?                                   // optional, siehe Abschnitt "Anlegen"
+  einkaufsdatum: date                              // Default: Erfassungsdatum, aenderbar
   owner: User
   members: List<User>
   status: AKTIV | ARCHIVIERT
@@ -63,7 +64,8 @@ Unit (erweiterbar, vorbefüllt) {
 - Items werden **nicht automatisch gelöscht**
 - Erst wenn **alle** Items einer Liste abgehakt sind, "verschwindet" die Liste automatisch ins **Archiv**
 - Archivierte Listen sind einsehbar und können **reaktiviert** werden
-- Bei Reaktivierung: alle Haken werden zurückgesetzt (Liste startet wieder "leer" abgehakt)
+- Bei Reaktivierung (expliziter Button): alle Haken werden zurückgesetzt (Liste startet wieder "leer" abgehakt)
+- Wird stattdessen ein **einzelnes** Item auf einer archivierten Liste wieder aufgehakt, reaktiviert sich die Liste automatisch — ohne die anderen Haken zurückzusetzen — und das Einkaufsdatum wird auf heute aktualisiert (faktisch ein neuer, an die alte Liste anknüpfender Einkaufsgang)
 
 ### Kategorisierung & Sortierung
 - Item-Kategorie ist **Freitext**, kein festes Vokabular/kein FK — analog zu Einheiten: Kategorisierung ist subjektiv/situativ und soll individuell überschreibbar sein
@@ -76,6 +78,12 @@ Unit (erweiterbar, vorbefüllt) {
 - Zusätzlich eine kleine, **erweiterbare** `unit`-Tabelle als reine Vorschlagsliste/Autocomplete in der UI (kein Zwang, nur Hilfestellung)
 - Wird mit sinnvollen Standardwerten vorbefüllt: Stk, kg, g, l, ml, Becher, Bund, Packung, Dose, ...
 - Nutzer können bei Bedarf eigene Einheiten zur Vorschlagsliste ergänzen, sind aber nie darauf beschränkt
+
+### Anlegen einer Liste
+- Bewusst reibungslos: **kein Pflicht-Name** — man will einfach eine neue Einkaufsliste machen, ohne vorher einen Namen zu überlegen
+- Stattdessen ein **Einkaufsdatum** (Default: Erfassungsdatum), das jederzeit geändert werden kann (z. B. Liste im Voraus für einen späteren Einkauf anlegen)
+- Ohne Namen zeigt die UI das Einkaufsdatum als Bezeichner an
+- Einkaufsorte sind für später vorgemerkt, bewusst nicht Teil des ersten Wurfs
 
 ### Multiuser & Sharing
 - Jede Liste hat genau einen **Owner** und eine **Liste von Mitgliedern**
@@ -122,9 +130,13 @@ Jeder Schritt wird getestet (wo sinnvoll auch deployt), bevor der nächste begin
 Schema wird ausschliesslich per Flyway-Migration (up front, explizites SQL) angelegt;
 Hibernate läuft strikt mit `ddl-auto: validate` und generiert nie selbst Schema.
 
-## 6. Import von Text-Einkaufslisten (z. B. NYT Cooking)
+## 6. Import von Text-Einkaufslisten
 
-Rezept-/App-Exporte (z. B. NYT Cooking "Grocery List") sollen sich per Copy-Paste importieren lassen.
+Zwei unterstützte Formate (per Strategy Pattern, explizite Auswahl durch den Nutzer):
+
+### NYT Cooking
+
+Rezept-Exporte ("Your Grocery List") per Copy-Paste importieren.
 
 **Herausforderungen im Rohtext**
 - Kopfzeile (Rezeptname, Portionenanzahl) ist Kontext, kein Item
@@ -135,11 +147,24 @@ Rezept-/App-Exporte (z. B. NYT Cooking "Grocery List") sollen sich per Copy-Past
 - Footer mit Rezept-Link soll ignoriert werden
 
 **Ablauf**
-1. **Paste-Import**: Freitext einfügen, App parst zeilenweise
-2. Parser extrahiert pro Zeile: `Menge` (Unicode-Brüche → Dezimal konvertieren), `Einheit` (als Freitext übernommen, optional Abgleich mit Vorschlagsliste für Autocomplete), `Bezeichnung` (Rest)
-3. **Vorschau vor Übernahme** – geparste Items werden angezeigt und können vom Nutzer korrigiert werden (wichtig bei Mehrdeutigkeiten wie "plus more" oder "or ...")
-4. Kategorie bleibt beim Import zunächst "Unkategorisiert" (später ggf. einfaches Keyword-Mapping, z. B. "Zwiebel" → Gemüse)
-5. Kopfzeile und Footer/Links werden über Marker (Trennlinien, Leerzeilen) erkannt und ignoriert
+1. Zutaten stehen zwischen der ersten Zeile, die nur aus einem einzelnen `-` besteht, und der Zeile, die nur aus mehreren `-` besteht (`----------`) – alles davor/danach wird ignoriert
+2. Menge (Unicode-Brüche → Dezimal) und Einheit werden pro Zeile erkannt, Rest wird Bezeichnung
+3. Kategorie bleibt immer leer ("Unkategorisiert") – NYT liefert keine Kategorien
+
+### Obsidian Markdown
+
+Markdown-Checklisten (`- [ ]` / `- [x]`) aus Obsidian-Notizen importieren.
+
+**Ablauf**
+1. Das Checkbox-Muster selbst ist der Marker – jede Zeile, die nicht `- [ ]`/`- [x]` entspricht (Frontmatter, Titel, Prosa), wird ignoriert; kein Start-/End-Suchen wie bei NYT nötig
+2. Markdown-Überschriften (`## Gemüse`) werden als **Kategorie** für alle nachfolgenden Items übernommen, bis zur nächsten Überschrift
+3. Abhak-Status (`[x]`) wird **bewusst ignoriert** – importierte Items starten immer offen (Haken in einer wiederverwendeten Vorlage spiegeln meist den letzten Durchgang, nicht den aktuellen Stand)
+4. Menge/Einheit-Erkennung nutzt dieselbe Logik wie NYT Cooking (gemeinsame Utility-Klasse, keine Duplikation)
+
+### Gemeinsam für beide Formate
+
+- **Vorschau vor Übernahme** – geparste Items (inkl. Kategorie) werden angezeigt und können vom Nutzer korrigiert werden, einzelne Zeilen abwählbar
+- Nicht erkennbare Mengen/Einheiten fallen auf Menge 1 / Einheit "Stk" zurück, ganze Zeile wird Bezeichnung
 
 ## 7. Offene Punkte (für später)
 
@@ -147,5 +172,8 @@ Rezept-/App-Exporte (z. B. NYT Cooking "Grocery List") sollen sich per Copy-Past
 - Einladung von Mitgliedern: per E-Mail-Adresse oder Link-Share?
 - Soll es eine Undo-Funktion beim versehentlichen Abhaken/Archivieren geben?
 - Reihenfolge der Items **innerhalb** einer Kategorie: frei per Drag&Drop oder alphabetisch?
-- Kein hartes Löschen von Listen über die App — stattdessen später ein Offline-Job, der archivierte Listen nach längerer Inaktivität (z. B. 6 Monate) automatisch aufräumt
+- ~~Kein hartes Löschen von Listen über die App~~ — revidiert: explizites, manuelles Löschen (mit Bestätigung) ist jetzt möglich, DELETE /api/lists/{id}. Automatisches/versehentliches Löschen bleibt ausgeschlossen; ein Offline-Job für automatisches Aufräumen sehr alter archivierter Listen ist weiterhin offen für später
 - **Autorisierungs-Lücke**: Authentifizierung (JWT + Google-Login) ist implementiert, aber es gibt noch keine Prüfung, ob ein User Owner/Member der Liste ist, die er per ID anspricht — jeder eingeloggte User kann aktuell jede Liste ändern, wenn er deren ID kennt. Für den privaten Rahmen (Familie) vertretbar, sollte vor breiterer Nutzung ergänzt werden
+- Einkaufsorte (z. B. Migros, Bauhaus) als eigenes Feld/Konzept — bewusst nicht Teil des ersten Wurfs beim Anlegen einer Liste
+- Autocomplete/"Self-Learning" für Item-Bezeichnungen (z. B. "Ap" → "Apfel" schlägt vor) basierend auf bisher verwendeten Namen — neuer Endpoint nötig (z. B. `GET /api/items/suggestions?query=`); Einheiten/Kategorien haben die Vorschlagslisten (`/api/units`, `/api/categories`) bereits im Backend, im Frontend aber noch nicht als Autocomplete genutzt
+- PWA-Fähigkeit (manifest.json + Service Worker) für "Zum Home-Bildschirm hinzufügen" auf iPhone — echte native App (App Store) als deutlich größerer Schritt bewusst nicht geplant, PWA gilt als ausreichend für den privaten Rahmen

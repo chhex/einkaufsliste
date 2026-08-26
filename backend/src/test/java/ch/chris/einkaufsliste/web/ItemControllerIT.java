@@ -41,7 +41,7 @@ class ItemControllerIT extends AbstractIntegrationTest {
 
     private ShoppingList list() {
         AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "x@x.com", "X"));
-        return listService.create("Testliste", owner);
+        return listService.create("Testliste", null, owner);
     }
 
     @Test

@@ -45,7 +45,7 @@ class ItemServiceIT extends AbstractIntegrationTest {
     private ShoppingList list() {
         if (list == null) {
             AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "x@x.com", "X"));
-            list = listService.create("Testliste", owner);
+            list = listService.create("Testliste", null, owner);
         }
         return list;
     }
@@ -133,6 +133,30 @@ class ItemServiceIT extends AbstractIntegrationTest {
 
         assertThat(shoppingListRepository.findById(listId).orElseThrow().getStatus())
                 .isEqualTo(ListStatus.AKTIV);
+    }
+
+    @Test
+    void toggleAbgehaktAufFalseReaktiviertArchivierteListeAutomatischOhneAndereHakenZurueckzusetzen() {
+        Item a = itemService.add(list().getId(), "Kaffee", new BigDecimal("1"), "Pkg", null);
+        Item b = itemService.add(list().getId(), "Zucker", new BigDecimal("1"), "kg", null);
+        Long listId = list().getId();
+
+        itemService.toggleAbgehakt(a.getId(), true);
+        itemService.toggleAbgehakt(b.getId(), true);
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(shoppingListRepository.findById(listId).orElseThrow().getStatus())
+                .isEqualTo(ListStatus.ARCHIVIERT); // beide abgehakt -> automatisch archiviert
+
+        // Nutzer hakt EIN Item wieder auf
+        itemService.toggleAbgehakt(a.getId(), false);
+        entityManager.flush();
+        entityManager.clear();
+
+        ShoppingList reloaded = shoppingListRepository.findById(listId).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(ListStatus.AKTIV); // automatisch reaktiviert
+        assertThat(itemRepository.findById(a.getId()).orElseThrow().isAbgehakt()).isFalse();
+        assertThat(itemRepository.findById(b.getId()).orElseThrow().isAbgehakt()).isTrue(); // NICHT zurueckgesetzt
     }
 
 }

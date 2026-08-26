@@ -17,6 +17,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,13 @@ public class ShoppingList {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    /**
+     * Optional - Anlegen einer Liste soll moeglichst reibungslos sein
+     * (Anforderung: "man will einfach eine neue Einkaufsliste machen"),
+     * ohne dass ein Name Pflicht ist. Ohne Name zeigt die UI stattdessen
+     * das Einkaufsdatum als Bezeichner.
+     */
+    @Column
     private String name;
 
     /**
@@ -65,6 +72,14 @@ public class ShoppingList {
     @Column(nullable = false)
     private SortField sortierung = SortField.KATEGORIE;
 
+    /**
+     * Default = Erfassungsdatum, aber jederzeit aenderbar (z.B. wenn man
+     * die Liste im Voraus fuer einen spaeteren Einkauf anlegt, oder
+     * rueckwirkend korrigiert).
+     */
+    @Column(nullable = false)
+    private LocalDate einkaufsdatum = LocalDate.now();
+
     @Column(name = "archived_at")
     private OffsetDateTime archivedAt;
 
@@ -84,6 +99,17 @@ public class ShoppingList {
     public ShoppingList(String name, AppUser owner) {
         this.name = name;
         this.owner = owner;
+    }
+
+    /**
+     * Variante mit explizitem Einkaufsdatum (z.B. Liste im Voraus fuer ein
+     * bestimmtes Datum anlegen). Ohne Angabe gilt der Field-Default (heute).
+     */
+    public ShoppingList(String name, AppUser owner, LocalDate einkaufsdatum) {
+        this(name, owner);
+        if (einkaufsdatum != null) {
+            this.einkaufsdatum = einkaufsdatum;
+        }
     }
 
     public Item addItem(String bezeichnung, BigDecimal menge, String einheit) {
@@ -133,6 +159,24 @@ public class ShoppingList {
     }
 
     /**
+     * Wird aufgerufen, wenn ein einzelnes Item auf einer ARCHIVIERTEN Liste
+     * wieder aufgehakt wird - loest den sonst widerspruechlichen Zustand
+     * "Liste archiviert, aber ein Item offen" auf. Bewusst ANDERS als
+     * reactivate(): setzt NICHT alle Haken zurueck (nur das eine Item wurde
+     * ja vom Aufrufer schon geaendert), sondern nur Status/archivedAt.
+     * Einkaufsdatum wird auf heute gesetzt, weil das faktisch ein neuer
+     * Einkaufsgang ist, der an die alte Liste anknuepft. No-op, falls die
+     * Liste ohnehin schon AKTIV ist.
+     */
+    public void unarchiveDueToItemUncheck() {
+        if (status == ListStatus.ARCHIVIERT) {
+            this.status = ListStatus.AKTIV;
+            this.archivedAt = null;
+            this.einkaufsdatum = LocalDate.now();
+        }
+    }
+
+    /**
      * True, wenn die Liste mindestens ein Item hat und ALLE abgehakt sind -
      * die Bedingung, unter der automatisch archiviert wird (siehe
      * ListService.archiveIfAllItemsChecked, aufgerufen nach jedem Abhaken).
@@ -172,6 +216,14 @@ public class ShoppingList {
 
     public void setSortierung(SortField sortierung) {
         this.sortierung = sortierung;
+    }
+
+    public LocalDate getEinkaufsdatum() {
+        return einkaufsdatum;
+    }
+
+    public void setEinkaufsdatum(LocalDate einkaufsdatum) {
+        this.einkaufsdatum = einkaufsdatum;
     }
 
     public OffsetDateTime getArchivedAt() {

@@ -4,6 +4,7 @@ import ch.chris.einkaufsliste.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,6 +40,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // CORS-Preflight-Requests (OPTIONS) tragen NIE einen
+                        // Authorization-Header (Browser-Vorgabe) - muessen
+                        // deshalb immer durchgelassen werden, sonst schlaegt
+                        // schon die Preflight-Anfrage mit 403 fehl, bevor der
+                        // eigentliche Request (z.B. POST) ueberhaupt rausgeht.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/ping",
                                 "/api/auth/**",

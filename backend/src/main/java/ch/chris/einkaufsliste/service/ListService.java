@@ -5,9 +5,11 @@ import ch.chris.einkaufsliste.domain.entity.ListMember;
 import ch.chris.einkaufsliste.domain.entity.ShoppingList;
 import ch.chris.einkaufsliste.domain.enums.SortField;
 import ch.chris.einkaufsliste.domain.repository.ShoppingListRepository;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -28,13 +30,30 @@ public class ListService {
     }
 
     @Transactional
-    public ShoppingList create(String name, AppUser owner) {
-        return shoppingListRepository.save(new ShoppingList(name, owner));
+    public ShoppingList create(String name, LocalDate einkaufsdatum, AppUser owner) {
+        return shoppingListRepository.save(new ShoppingList(name, owner, einkaufsdatum));
+    }
+
+    /**
+     * Name und/oder Einkaufsdatum nachtraeglich aendern - beide Parameter
+     * optional, null bedeutet "unveraendert lassen".
+     */
+    @Transactional
+    public void update(Long listId, String name, LocalDate einkaufsdatum) {
+        ShoppingList list = getOrThrow(listId);
+        if (name != null) {
+            list.setName(name);
+        }
+        if (einkaufsdatum != null) {
+            list.setEinkaufsdatum(einkaufsdatum);
+        }
     }
 
     @Transactional(readOnly = true)
     public ShoppingList get(Long listId) {
-        return getOrThrow(listId);
+        ShoppingList list = getOrThrow(listId);
+        initializeForResponse(list);
+        return list;
     }
 
     /**
@@ -42,7 +61,9 @@ public class ListService {
      */
     @Transactional(readOnly = true)
     public List<ShoppingList> getAccessibleByUser(Long userId) {
-        return shoppingListRepository.findAccessibleByUserId(userId);
+        List<ShoppingList> lists = shoppingListRepository.findAccessibleByUserId(userId);
+        lists.forEach(list -> Hibernate.initialize(list.getOwner()));
+        return lists;
     }
 
     @Transactional
@@ -53,6 +74,31 @@ public class ListService {
     @Transactional
     public void reactivate(Long listId) {
         getOrThrow(listId).reactivate();
+    }
+
+    /**
+     * Hartes Loeschen einer Liste - im Gegensatz zu Archivieren/Reaktivieren
+     * bewusst nur als EXPLIZITE Nutzeraktion (mit Bestaetigung im Frontend),
+     * nicht automatisch. Cascade in der DB raeumt Items/Members mit auf.
+     */
+    @Transactional
+    public void delete(Long listId) {
+        if (!shoppingListRepository.existsById(listId)) {
+            throw new IllegalArgumentException("Liste nicht gefunden: " + listId);
+        }
+        shoppingListRepository.deleteById(listId);
+    }
+
+    /**
+     * Wird nach jedem Aufhaken (abgehakt=false) eines Items aufgerufen.
+     * Falls die Liste ARCHIVIERT war, wird sie automatisch reaktiviert -
+     * ohne die anderen Haken zurueckzusetzen (siehe
+     * ShoppingList.unarchiveDueToItemUncheck). No-op, falls die Liste
+     * bereits AKTIV ist.
+     */
+    @Transactional
+    public void reactivateIfArchivedDueToItemUncheck(Long listId) {
+        getOrThrow(listId).unarchiveDueToItemUncheck();
     }
 
     /**
@@ -118,6 +164,25 @@ public class ListService {
     private ShoppingList getOrThrow(Long listId) {
         return shoppingListRepository.findById(listId)
                 .orElseThrow(() -> new IllegalArgumentException("Liste nicht gefunden: " + listId));
+    }
+
+    /**
+     * Laedt alle lazy-Referenzen, die ListResponse.from() spaeter braucht,
+     * WAEHREND die Transaktion/Session noch offen ist. Notwendig, weil
+     * open-in-view=false ist (bewusst, siehe application.yml) - ohne das
+     * hier wuerde der Controller nach Rueckkehr dieser Methode versuchen,
+     * auf eine bereits geschlossene Hibernate-Session zuzugreifen
+     * (LazyInitializationException). MockMvc-Tests (eine Transaktion pro
+     * Testmethode) decken diesen Fall NICHT ab - deshalb ist der Bug dort
+     * nicht aufgefallen, sondern erst im echten Betrieb (separate
+     * Transaktion pro HTTP-Request).
+     */
+    private void initializeForResponse(ShoppingList list) {
+        Hibernate.initialize(list.getOwner());
+        list.getItems(); // laedt die Items-Collection
+        for (ListMember member : list.getMembers()) {
+            Hibernate.initialize(member.getUser());
+        }
     }
 
 }

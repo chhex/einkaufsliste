@@ -1,36 +1,34 @@
 <script>
-  // Provisorischer Smoke-Test fuer Schritt 1 (Projektgeruest).
-  // Wird in Schritt 6 durch die echte UI mit Mock-Backend ersetzt.
-  let status = $state('nicht geprueft');
+    import { auth } from './lib/auth.svelte.js';
+    import GoogleLoginButton from './lib/GoogleLoginButton.svelte';
+    import ListOverview from './lib/ListOverview.svelte';
+    import ListDetail from './lib/ListDetail.svelte';
+    import ThemeSwitcher from './lib/ThemeSwitcher.svelte';
 
-  async function checkBackend() {
-    status = 'prüfe...';
-    try {
-      const res = await fetch('/api/ping');
-      const data = await res.json();
-      status = `Backend antwortet: ${data.status}`;
-    } catch (e) {
-      status = 'Backend nicht erreichbar';
-    }
-  }
+    let selectedListId = $state(null);
 </script>
 
-<main>
-  <h1>🛒 Einkaufsliste</h1>
-  <p>Projektgerüst steht. Status: {status}</p>
-  <button onclick={checkBackend}>Backend-Verbindung testen</button>
-</main>
+<main class="mx-auto flex h-dvh max-w-md flex-col bg-base-100 p-4 text-base-content">
+    <div class="mb-4 flex flex-shrink-0 items-center justify-between">
+        <h1 class="text-2xl font-bold">🛒 Einkaufslisten</h1>
+        <ThemeSwitcher />
+    </div>
 
-<style>
-  main {
-    font-family: system-ui, sans-serif;
-    max-width: 480px;
-    margin: 4rem auto;
-    text-align: center;
-  }
-  button {
-    padding: 0.5rem 1rem;
-    margin-top: 1rem;
-    cursor: pointer;
-  }
-</style>
+    {#if auth.isLoggedIn}
+        <div class="mb-4 flex flex-shrink-0 items-center justify-between text-sm">
+            <span>Eingeloggt als <strong>{auth.user.name}</strong></span>
+            <button class="btn btn-ghost btn-sm" onclick={() => auth.logout()}>Logout</button>
+        </div>
+
+        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            {#if selectedListId}
+                <ListDetail listId={selectedListId} onBack={() => (selectedListId = null)} />
+            {:else}
+                <ListOverview onSelectList={(id) => (selectedListId = id)} />
+            {/if}
+        </div>
+    {:else}
+        <p class="mb-3">Bitte einloggen:</p>
+        <GoogleLoginButton />
+    {/if}
+</main>
