@@ -39,6 +39,21 @@ public class UserService {
     }
 
     /**
+     * Fuer die Mitglieder-Verwaltung: Nutzer werden per E-Mail gesucht (die
+     * kennt man ja von der Person), nicht per interner userId. Setzt
+     * voraus, dass die Person sich schon MINDESTENS EINMAL eingeloggt hat
+     * (sonst existiert noch kein AppUser-Datensatz) - es gibt bewusst
+     * (noch) keinen Einladungs-Mechanismus fuer Personen, die die App noch
+     * nie geoeffnet haben.
+     */
+    @Transactional(readOnly = true)
+    public AppUser getByEmail(String email) {
+        return appUserRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Kein User mit dieser E-Mail gefunden - hat sich die Person schon mal in der App eingeloggt?"));
+    }
+
+    /**
      * Loescht einen User hart. ACHTUNG: cascaded per DB-FK (ON DELETE CASCADE)
      * auf alle Listen, deren Owner dieser User ist, inkl. deren Items -
      * bewusst so gewaehlt, siehe V2__create_domain_schema.sql. Fuer Listen

@@ -96,8 +96,10 @@ public class ListController {
 
     @PostMapping("/{id}/members")
     public MemberResponse addMember(@PathVariable Long id, @Valid @RequestBody AddMemberRequest request) {
-        AppUser user = userService.get(request.userId());
-        ListMember member = listService.addMember(id, user);
+        // getByEmail() nur fuer die freundliche Fehlermeldung bei unbekannter
+        // E-Mail - weitergereicht wird nur die ID, siehe ListService.addMember.
+        AppUser user = userService.getByEmail(request.email());
+        ListMember member = listService.addMember(id, user.getId());
         return MemberResponse.from(member);
     }
 

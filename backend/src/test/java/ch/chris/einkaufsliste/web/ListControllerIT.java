@@ -102,6 +102,45 @@ class ListControllerIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("Meine Liste"));
     }
 
+    @Test
+    void addMemberPerEmailFunktioniert() throws Exception {
+        AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "owner@x.com", "Owner"));
+        AppUser partner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "partner@x.com", "Partner"));
+
+        String createBody = objectMapper.writeValueAsString(new CreateListRequestJson("Gemeinsame Liste"));
+        String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content(createBody))
+                .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(post(location + "/members")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content("{\"email\":\"partner@x.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Partner"))
+                .andExpect(jsonPath("$.email").value("partner@x.com"));
+    }
+
+    @Test
+    void addMemberMitUnbekannterEmailLiefert400() throws Exception {
+        AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "owner2@x.com", "Owner2"));
+
+        String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new CreateListRequestJson("Test"))))
+                .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(post(location + "/members")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content("{\"email\":\"nie-eingeloggt@x.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
     private record CreateListRequestJson(String name) {
     }
 

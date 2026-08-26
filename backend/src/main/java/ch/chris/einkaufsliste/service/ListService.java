@@ -4,6 +4,7 @@ import ch.chris.einkaufsliste.domain.entity.AppUser;
 import ch.chris.einkaufsliste.domain.entity.ListMember;
 import ch.chris.einkaufsliste.domain.entity.ShoppingList;
 import ch.chris.einkaufsliste.domain.enums.SortField;
+import ch.chris.einkaufsliste.domain.repository.AppUserRepository;
 import ch.chris.einkaufsliste.domain.repository.ShoppingListRepository;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
@@ -24,9 +25,11 @@ import java.util.Objects;
 public class ListService {
 
     private final ShoppingListRepository shoppingListRepository;
+    private final AppUserRepository appUserRepository;
 
-    public ListService(ShoppingListRepository shoppingListRepository) {
+    public ListService(ShoppingListRepository shoppingListRepository, AppUserRepository appUserRepository) {
         this.shoppingListRepository = shoppingListRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     @Transactional
@@ -114,11 +117,21 @@ public class ListService {
         }
     }
 
+    /**
+     * Nimmt bewusst nur die userId entgegen (nicht das AppUser-Objekt) und
+     * laedt es hier selbst frisch - der Aufrufer (Controller) hat den User
+     * u.U. in einer ANDEREN, bereits geschlossenen Transaktion geladen
+     * (z.B. via UserService.getByEmail); ein solches "losgeloestes"
+     * Objekt hier weiterzureichen fuehrt bei @MapsId-Assoziationen (siehe
+     * ListMember) zu "detached entity passed to persist".
+     */
     @Transactional
-    public ListMember addMember(Long listId, AppUser user) {
+    public ListMember addMember(Long listId, Long userId) {
         ShoppingList list = getOrThrow(listId);
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User nicht gefunden: " + userId));
 
-        if (list.getOwner().getId().equals(user.getId())) {
+        if (list.getOwner().getId().equals(userId)) {
             throw new IllegalArgumentException("Der Owner ist implizit bereits Mitglied der Liste");
         }
         // Bewusst ueber m.getUser().getId() statt m.getId().getUserId():
@@ -127,7 +140,7 @@ public class ListService {
         // (im selben Transaktions-Durchlauf) hinzugefuegten, noch nicht
         // geflushten Members noch null.
         boolean bereitsMitglied = list.getMembers().stream()
-                .anyMatch(m -> m.getUser().getId().equals(user.getId()));
+                .anyMatch(m -> m.getUser().getId().equals(userId));
         if (bereitsMitglied) {
             throw new IllegalArgumentException("User ist bereits Mitglied dieser Liste");
         }

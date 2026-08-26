@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { apiFetch } from './api.js';
     import ImportPanel from './ImportPanel.svelte';
+    import MembersPanel from './MembersPanel.svelte';
 
     let { listId, onBack } = $props();
 
@@ -216,6 +217,12 @@
         {/if}
 
         <div class="flex-shrink-0">
+            <MembersPanel
+                listId={listId}
+                members={list.members}
+                ownerName={list.ownerName}
+                onChanged={load}
+            />
             <ImportPanel listId={listId} onImported={load} />
         </div>
 

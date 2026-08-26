@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
@@ -45,6 +46,21 @@ class UserServiceIT extends AbstractIntegrationTest {
         userService.delete(user.getId());
 
         assertThat(appUserRepository.findById(user.getId())).isEmpty();
+    }
+
+    @Test
+    void getByEmailFindetBestehendenUser() {
+        userService.findOrCreateByGoogleLogin("google-mail", "gesucht@example.com", "Gesucht");
+
+        AppUser gefunden = userService.getByEmail("gesucht@example.com");
+
+        assertThat(gefunden.getName()).isEqualTo("Gesucht");
+    }
+
+    @Test
+    void getByEmailWirftFehlerWennNochNieEingeloggt() {
+        assertThatThrownBy(() -> userService.getByEmail("nie-eingeloggt@example.com"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
 }

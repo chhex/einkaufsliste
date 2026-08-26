@@ -142,7 +142,7 @@ class ListServiceIT extends AbstractIntegrationTest {
     void addMemberUndRemoveMemberFunktionieren() {
         ShoppingList list = listService.create("Gemeinsame Liste", null, owner());
 
-        ListMember member = listService.addMember(list.getId(), partner());
+        ListMember member = listService.addMember(list.getId(), partner().getId());
         assertThat(member.getUser().getName()).isEqualTo("Partner");
 
         listService.removeMember(list.getId(), partner().getId());
@@ -157,7 +157,7 @@ class ListServiceIT extends AbstractIntegrationTest {
     void addMemberLehntOwnerAlsMitgliedAb() {
         ShoppingList list = listService.create("Test", null, owner());
 
-        assertThatThrownBy(() -> listService.addMember(list.getId(), owner()))
+        assertThatThrownBy(() -> listService.addMember(list.getId(), owner().getId()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -168,7 +168,7 @@ class ListServiceIT extends AbstractIntegrationTest {
         assertThat(listService.resolveSortField(list.getId(), owner().getId()))
                 .isEqualTo(SortField.KATEGORIE);
 
-        ListMember member = listService.addMember(list.getId(), partner());
+        ListMember member = listService.addMember(list.getId(), partner().getId());
         member.setSortierung(SortField.BEZEICHNUNG);
         entityManager.flush();
         entityManager.clear();
