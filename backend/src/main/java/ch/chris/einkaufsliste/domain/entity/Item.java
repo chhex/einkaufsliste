@@ -33,10 +33,18 @@ public class Item {
     @Column(nullable = false)
     private String bezeichnung;
 
-    @Column(nullable = false)
+    /**
+     * Optional (Anforderung: "nur Artikelname Pflicht, Rest kann spaeter
+     * nachgetragen werden") - Menge ohne Angabe einfach leer/unbekannt.
+     */
+    @Column
     private BigDecimal menge;
 
-    @Column(nullable = false)
+    /**
+     * Optional, Freitext (siehe unit-Tabelle als reine Vorschlagsliste,
+     * kein FK - Kommentar in V2__create_domain_schema.sql).
+     */
+    @Column
     private String einheit;
 
     /**
@@ -67,6 +75,10 @@ public class Item {
         this.bezeichnung = bezeichnung;
         this.menge = menge;
         this.einheit = einheit;
+    }
+
+    Item(ShoppingList list, String bezeichnung) {
+        this(list, bezeichnung, null, null);
     }
 
     public Long getId() {

@@ -146,11 +146,13 @@
                         <input
                             class="input input-bordered input-sm min-w-0 flex-1"
                             bind:value={item.einheit}
+                            list="unit-suggestions"
                             placeholder="Einheit"
                         />
                         <input
                             class="input input-bordered input-sm min-w-0 flex-[1.3]"
                             bind:value={item.kategorie}
+                            list="category-suggestions"
                             placeholder="Kategorie"
                         />
                     </li>

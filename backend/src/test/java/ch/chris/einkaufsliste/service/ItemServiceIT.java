@@ -159,4 +159,15 @@ class ItemServiceIT extends AbstractIntegrationTest {
         assertThat(itemRepository.findById(b.getId()).orElseThrow().isAbgehakt()).isTrue(); // NICHT zurueckgesetzt
     }
 
+    @Test
+    void addOhneMengeUndEinheitFunktioniert() {
+        // Anforderung (Feedback nach erstem Einsatz): nur Bezeichnung
+        // Pflicht, Rest optional/spaeter nachtragbar.
+        Item item = itemService.add(list().getId(), "Milch", null, null, null);
+
+        assertThat(item.getId()).isNotNull();
+        assertThat(item.getMenge()).isNull();
+        assertThat(item.getEinheit()).isNull();
+    }
+
 }

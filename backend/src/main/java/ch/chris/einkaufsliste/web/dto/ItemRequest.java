@@ -1,15 +1,18 @@
 package ch.chris.einkaufsliste.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
+/**
+ * Nur bezeichnung ist Pflicht (Anforderung: reibungsloses Hinzufuegen,
+ * Details spaeter nachtragbar) - menge/einheit/kategorie alle optional.
+ */
 public record ItemRequest(
         @NotBlank String bezeichnung,
-        @NotNull @Positive BigDecimal menge,
-        @NotBlank String einheit,
+        @Positive BigDecimal menge,
+        String einheit,
         String kategorie
 ) {
 }

@@ -10,6 +10,12 @@
     let loading = $state(true);
     let error = $state(null);
 
+    // Vorschlagslisten fuer Einheit/Kategorie (Datalist statt starrem
+    // Dropdown - Vorschlag anklickbar, aber freie Eingabe bleibt moeglich,
+    // z.B. fuer Import-Faelle wie "cups"/"tbsp").
+    let unitSuggestions = $state([]);
+    let categorySuggestions = $state([]);
+
     let newBezeichnung = $state('');
     let newMenge = $state('');
     let newEinheit = $state('');
@@ -21,8 +27,6 @@
     let dateInput = $state('');
     let savingHeader = $state(false);
 
-    // Inline-Editieren eines bestehenden Items (nicht nur bei der Import-
-    // Vorschau, sondern jederzeit fuer bereits in der Liste vorhandene Items).
     let editingItemId = $state(null);
     let editBezeichnung = $state('');
     let editMenge = $state('');
@@ -49,6 +53,24 @@
         }
     }
 
+    async function loadSuggestions() {
+        try {
+            const [units, categories] = await Promise.all([
+                apiFetch('/api/units'),
+                apiFetch('/api/categories')
+            ]);
+            unitSuggestions = units;
+            categorySuggestions = categories;
+        } catch {
+            // Vorschlagslisten sind ein Nice-to-have - bei Fehler einfach
+            // ohne Vorschlaege weiterarbeiten (freie Texteingabe geht immer).
+        }
+    }
+
+    /**
+     * Abgehakte Items rutschen nach unten. Innerhalb jeder Gruppe wird nach
+     * dem in list.sortierung hinterlegten Feld sortiert.
+     */
     function sortedItems() {
         if (!list) return [];
         const key = list.sortierung.toLowerCase();
@@ -59,11 +81,58 @@
         return [...offen, ...abgehakt];
     }
 
+    /**
+     * Gruppiert offene Items nach Kategorie mit Abschnitts-Ueberschriften -
+     * nur sinnvoll, wenn ohnehin nach Kategorie sortiert wird. Items ohne
+     * Kategorie landen in einer eigenen "Ohne Kategorie"-Gruppe am Ende.
+     * Abgehakte Items bleiben bewusst eine einzige, ungruppierte Gruppe
+     * ganz unten (rutschen "nach unten", nicht in ihre Kategorie-Gruppe).
+     */
+    function groupedByCategory() {
+        if (!list) return [];
+        const key = list.sortierung.toLowerCase();
+        const cmp = (a, b) =>
+            (a[key] ?? '').localeCompare(b[key] ?? '', 'de', { sensitivity: 'base' });
+
+        const offen = list.items.filter((i) => !i.abgehakt).sort(cmp);
+        const abgehakt = list.items.filter((i) => i.abgehakt).sort(cmp);
+
+        const groups = new Map();
+        for (const item of offen) {
+            const label = item.kategorie?.trim() || 'Ohne Kategorie';
+            if (!groups.has(label)) groups.set(label, []);
+            groups.get(label).push(item);
+        }
+        const result = [...groups.entries()].map(([label, items]) => ({ label, items }));
+        // "Ohne Kategorie" ans Ende schieben, falls vorhanden
+        result.sort((a, b) => {
+            if (a.label === 'Ohne Kategorie') return 1;
+            if (b.label === 'Ohne Kategorie') return -1;
+            return a.label.localeCompare(b.label, 'de');
+        });
+
+        if (abgehakt.length > 0) {
+            result.push({ label: null, items: abgehakt }); // null = kein Header
+        }
+        return result;
+    }
+
+    function itemLabel(item) {
+        const parts = [item.bezeichnung];
+        if (item.menge != null && item.einheit) {
+            parts.push(`— ${item.menge} ${item.einheit}`);
+        } else if (item.menge != null) {
+            parts.push(`— ${item.menge}`);
+        } else if (item.einheit) {
+            parts.push(`— ${item.einheit}`);
+        }
+        return parts.join(' ');
+    }
+
     async function addItem(event) {
         event.preventDefault();
         const bezeichnung = newBezeichnung.trim();
-        const einheit = newEinheit.trim();
-        if (!bezeichnung || !newMenge || !einheit) return;
+        if (!bezeichnung) return;
 
         adding = true;
         error = null;
@@ -72,8 +141,8 @@
                 method: 'POST',
                 body: JSON.stringify({
                     bezeichnung,
-                    menge: Number(newMenge),
-                    einheit,
+                    menge: newMenge ? Number(newMenge) : null,
+                    einheit: newEinheit.trim() || null,
                     kategorie: newKategorie.trim() || null
                 })
             });
@@ -115,8 +184,8 @@
     function startEditItem(item) {
         editingItemId = item.id;
         editBezeichnung = item.bezeichnung;
-        editMenge = item.menge;
-        editEinheit = item.einheit;
+        editMenge = item.menge ?? '';
+        editEinheit = item.einheit ?? '';
         editKategorie = item.kategorie ?? '';
     }
 
@@ -126,8 +195,7 @@
 
     async function saveEditItem(itemId) {
         const bezeichnung = editBezeichnung.trim();
-        const einheit = editEinheit.trim();
-        if (!bezeichnung || !editMenge || !einheit) return;
+        if (!bezeichnung) return;
 
         savingItem = true;
         error = null;
@@ -136,8 +204,8 @@
                 method: 'PUT',
                 body: JSON.stringify({
                     bezeichnung,
-                    menge: Number(editMenge),
-                    einheit,
+                    menge: editMenge ? Number(editMenge) : null,
+                    einheit: editEinheit.trim() || null,
                     kategorie: editKategorie.trim() || null
                 })
             });
@@ -170,8 +238,22 @@
         }
     }
 
-    onMount(load);
+    onMount(() => {
+        load();
+        loadSuggestions();
+    });
 </script>
+
+<datalist id="unit-suggestions">
+    {#each unitSuggestions as u}
+        <option value={u.name}></option>
+    {/each}
+</datalist>
+<datalist id="category-suggestions">
+    {#each categorySuggestions as c}
+        <option value={c.name}></option>
+    {/each}
+</datalist>
 
 <div class="flex h-full min-h-0 flex-col">
     <button class="mb-3 self-start text-sm text-primary" onclick={onBack}>← Zurück zur Übersicht</button>
@@ -230,7 +312,7 @@
             <input
                 class="input input-bordered input-sm min-w-0"
                 bind:value={newBezeichnung}
-                placeholder="Was?"
+                placeholder="Was? (Pflicht)"
                 disabled={adding}
             />
             <input
@@ -245,99 +327,116 @@
             <input
                 class="input input-bordered input-sm min-w-0"
                 bind:value={newEinheit}
+                list="unit-suggestions"
                 placeholder="Einheit"
                 disabled={adding}
             />
             <input
                 class="input input-bordered input-sm min-w-0"
                 bind:value={newKategorie}
-                placeholder="Kategorie (optional)"
+                list="category-suggestions"
+                placeholder="Kategorie"
                 disabled={adding}
             />
-            <button class="btn btn-primary btn-sm" type="submit" disabled={adding}>+</button>
+            <button class="btn btn-primary btn-sm" type="submit" disabled={adding || !newBezeichnung.trim()}>
+                +
+            </button>
         </form>
 
         {#if list.items.length === 0}
             <p class="text-base-content/60">Noch keine Items – oben hinzufügen.</p>
         {:else}
             <div class="min-h-0 flex-1 overflow-y-auto [-webkit-overflow-scrolling:touch]">
-                <ul class="flex flex-col">
-                    {#each sortedItems() as item (item.id)}
-                        <li class="flex items-center gap-2 border-b border-base-200 py-2">
-                            {#if editingItemId === item.id}
-                                <div class="grid w-full grid-cols-[2fr_1fr_1fr_1.3fr_auto_auto] items-center gap-1">
-                                    <input
-                                        class="input input-bordered input-sm min-w-0"
-                                        bind:value={editBezeichnung}
-                                        placeholder="Was?"
-                                        disabled={savingItem}
-                                    />
-                                    <input
-                                        class="input input-bordered input-sm min-w-0"
-                                        bind:value={editMenge}
-                                        type="number"
-                                        step="any"
-                                        min="0"
-                                        placeholder="Menge"
-                                        disabled={savingItem}
-                                    />
-                                    <input
-                                        class="input input-bordered input-sm min-w-0"
-                                        bind:value={editEinheit}
-                                        placeholder="Einheit"
-                                        disabled={savingItem}
-                                    />
-                                    <input
-                                        class="input input-bordered input-sm min-w-0"
-                                        bind:value={editKategorie}
-                                        placeholder="Kategorie (optional)"
-                                        disabled={savingItem}
-                                    />
-                                    <button
-                                        class="btn btn-primary btn-sm"
-                                        onclick={() => saveEditItem(item.id)}
-                                        disabled={savingItem}
-                                    >
-                                        ✓
-                                    </button>
-                                    <button
-                                        class="btn btn-outline btn-sm"
-                                        onclick={cancelEditItem}
-                                        disabled={savingItem}
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            {:else}
-                                <input
-                                    class="checkbox checkbox-sm"
-                                    type="checkbox"
-                                    checked={item.abgehakt}
-                                    onchange={() => toggleAbgehakt(item)}
-                                />
-                                <button
-                                    class="min-w-0 flex-1 truncate text-left"
-                                    class:line-through={item.abgehakt}
-                                    class:text-base-content={!item.abgehakt}
-                                    class:opacity-50={item.abgehakt}
-                                    onclick={() => startEditItem(item)}
-                                >
-                                    {item.bezeichnung} — {item.menge} {item.einheit}
-                                    {#if item.kategorie}
-                                        <span class="text-sm text-base-content/60">({item.kategorie})</span>
-                                    {/if}
-                                </button>
-                                <button
-                                    class="shrink-0 px-1 opacity-50 hover:opacity-100"
-                                    onclick={() => deleteItem(item)}
-                                >
-                                    🗑
-                                </button>
-                            {/if}
-                        </li>
+                {#if list.sortierung === 'KATEGORIE'}
+                    {#each groupedByCategory() as group}
+                        {#if group.label}
+                            <h3 class="mb-1 mt-3 text-xs font-semibold uppercase tracking-wide text-base-content/50 first:mt-0">
+                                {group.label}
+                            </h3>
+                        {/if}
+                        <ul class="flex flex-col">
+                            {#each group.items as item (item.id)}
+                                {@render itemRow(item)}
+                            {/each}
+                        </ul>
                     {/each}
-                </ul>
+                {:else}
+                    <ul class="flex flex-col">
+                        {#each sortedItems() as item (item.id)}
+                            {@render itemRow(item)}
+                        {/each}
+                    </ul>
+                {/if}
             </div>
         {/if}
     {/if}
 </div>
+
+{#snippet itemRow(item)}
+    <li class="flex items-center gap-2 border-b border-base-200 py-2">
+        {#if editingItemId === item.id}
+            <div class="grid w-full grid-cols-[2fr_1fr_1fr_1.3fr_auto_auto] items-center gap-1">
+                <input
+                    class="input input-bordered input-sm min-w-0"
+                    bind:value={editBezeichnung}
+                    placeholder="Was?"
+                    disabled={savingItem}
+                />
+                <input
+                    class="input input-bordered input-sm min-w-0"
+                    bind:value={editMenge}
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="Menge"
+                    disabled={savingItem}
+                />
+                <input
+                    class="input input-bordered input-sm min-w-0"
+                    bind:value={editEinheit}
+                    list="unit-suggestions"
+                    placeholder="Einheit"
+                    disabled={savingItem}
+                />
+                <input
+                    class="input input-bordered input-sm min-w-0"
+                    bind:value={editKategorie}
+                    list="category-suggestions"
+                    placeholder="Kategorie"
+                    disabled={savingItem}
+                />
+                <button
+                    class="btn btn-primary btn-sm"
+                    onclick={() => saveEditItem(item.id)}
+                    disabled={savingItem || !editBezeichnung.trim()}
+                >
+                    ✓
+                </button>
+                <button class="btn btn-outline btn-sm" onclick={cancelEditItem} disabled={savingItem}>
+                    ✕
+                </button>
+            </div>
+        {:else}
+            <input
+                class="checkbox checkbox-sm"
+                type="checkbox"
+                checked={item.abgehakt}
+                onchange={() => toggleAbgehakt(item)}
+            />
+            <button
+                class="min-w-0 flex-1 truncate text-left"
+                class:line-through={item.abgehakt}
+                class:opacity-50={item.abgehakt}
+                onclick={() => startEditItem(item)}
+            >
+                {itemLabel(item)}
+                {#if item.kategorie && list.sortierung !== 'KATEGORIE'}
+                    <span class="text-sm text-base-content/60">({item.kategorie})</span>
+                {/if}
+            </button>
+            <button class="shrink-0 px-1 opacity-50 hover:opacity-100" onclick={() => deleteItem(item)}>
+                🗑
+            </button>
+        {/if}
+    </li>
+{/snippet}

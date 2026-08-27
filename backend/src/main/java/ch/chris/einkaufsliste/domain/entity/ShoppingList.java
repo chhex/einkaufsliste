@@ -118,6 +118,16 @@ public class ShoppingList {
         return item;
     }
 
+    /**
+     * Nur Bezeichnung, ohne Menge/Einheit - beides kann spaeter nachgetragen
+     * werden (Anforderung: reibungsloses Hinzufuegen, nur Artikelname Pflicht).
+     */
+    public Item addItem(String bezeichnung) {
+        Item item = new Item(this, bezeichnung);
+        items.add(item);
+        return item;
+    }
+
     public void removeItem(Item item) {
         // Bewusst KEIN item.detachFromList() hier: orphanRemoval=true kuemmert
         // sich beim Flush selbststaendig um das DELETE. Wuerden wir die

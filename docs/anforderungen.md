@@ -55,7 +55,7 @@ Unit (erweiterbar, vorbefüllt) {
 ## 3. Funktionale Anforderungen
 
 ### Items
-- Ein Item hat: Bezeichnung, Menge, Einheit, Kategorie
+- Ein Item hat: Bezeichnung (Pflicht), Menge, Einheit, Kategorie (alle drei optional, jederzeit nachtragbar — Feedback aus dem ersten echten Einsatz: schnelles Erfassen im Laden wichtiger als Vollständigkeit beim Anlegen)
 - **Kein** Fälligkeitsdatum, keine Erinnerungen, keine Unterschritte
 - Items können abgehakt werden
 
@@ -72,6 +72,8 @@ Unit (erweiterbar, vorbefüllt) {
 - Zusätzlich eine kleine `category`-Tabelle als reine Vorschlagsliste/Autocomplete in der UI (z. B. "Gemüse", "Tiefkühl", "Getränke")
 - Sortierung der Items erfolgt (da `kategorie`/`bezeichnung`/`einheit` Freitext sind) einfach per `ORDER BY` auf eines dieser Felder — keine eigene Positions-Tabelle nötig
 - Die **Sortierpräferenz wird pro Liste persistiert**: `list.sortierung` ist die Default-/Owner-Präferenz, jedes Mitglied kann sie über `list_member.sortierung` individuell für sich überschreiben (z. B. Du sortierst nach Kategorie, Deine Frau nach Bezeichnung — auf derselben Liste)
+- Bei Sortierung nach Kategorie: Items werden in der UI zusätzlich visuell in Abschnitte mit Kategorie-Überschriften gruppiert (abgehakte Items bleiben eine eigene, ungruppierte Gruppe ganz unten)
+- Einheit/Kategorie werden in der UI als Kombi-Feld (Eingabe + Dropdown-Vorschläge aus `unit`/`category`) dargestellt — kombiniert "feste Werte schnell auswählbar" mit der Freiheit, trotzdem beliebigen Text einzugeben (wichtig für Imports)
 
 ### Einheiten
 - Item-Einheit ist **Freitext**, kein festes Vokabular/kein FK — wichtig für Imports mit fremden Masssystemen (z. B. "cups", "tbsp" aus NYT Cooking) und individuelle Angaben ("Flasche", "Prise")

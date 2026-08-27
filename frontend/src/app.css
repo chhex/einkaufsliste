@@ -4,5 +4,5 @@
    (siehe ThemeSwitcher.svelte) statt aller ~30 - hell/dunkel-Paare plus ein
    paar Charaktere. Erstes Theme ("light") ist der Default. */
 @plugin "daisyui" {
-  themes: light --default, dark, cupcake, forest, dracula, autumn, corporate;
+  themes: light --default, dark, cupcake, forest, dracula, autumn, corporate, synthwave, cyberpunk, valentine, halloween , garden, bumblebee, emerald, retro, lo-fi, pastel, fantasy, wireframe, black, luxury, dracula;
 }

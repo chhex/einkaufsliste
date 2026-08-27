@@ -6,7 +6,21 @@
         { value: 'forest', label: '🌲 Forest' },
         { value: 'dracula', label: '🧛 Dracula' },
         { value: 'autumn', label: '🍂 Autumn' },
-        { value: 'corporate', label: '💼 Corporate' }
+        { value: 'corporate', label: '💼 Corporate' },
+        { value: 'synthwave', label: ' neon Synthwave' },
+        { value: 'cyberpunk', label: '🤖 Cyberpunk' },
+        { value: 'valentine', label: '💕 Valentine' },
+        { value: 'halloween', label: '🎃 Halloween' },
+        { value: 'garden', label: '🌷 Garden' },
+        { value: 'bumblebee', label: '🐝 Bumblebee' },
+        { value: 'emerald', label: '💚 Emerald' },
+        { value: 'retro', label: '🕹️ Retro' },
+        { value: 'lo-fi', label: ' chill Lo-Fi' },
+        { value: 'pastel', label: '🎨 Pastel' },
+        { value: 'fantasy', label: '🧙 Fantasy' },
+        { value: 'wireframe', label: '✏️ Wireframe' },
+        { value: 'black', label: '🖤 Black' },
+        { value: 'luxury', label: '💎 Luxury' }
     ];
 
     let current = $state(localStorage.getItem('theme') ?? 'light');
