@@ -72,50 +72,52 @@ class NytCookingParserTest {
     }
 
     @Test
-    void konvertiertUnicodeBruchZuDezimalzahl() {
+    void konvertiertUnicodeBruchZuDezimalzahlUndEinheitBleibtLeer() {
         List<ParsedItem> items = parser.parse(BEISPIEL_REZEPT);
 
         ParsedItem ginger = items.stream()
                 .filter(i -> i.bezeichnung().contains("ginger"))
                 .findFirst().orElseThrow();
         assertThat(ginger.menge()).isEqualByComparingTo(new BigDecimal("1.5"));
-        assertThat(ginger.einheit()).isEqualTo("tablespoons");
+        // Einheit wird bewusst NICHT mehr geraten - "tablespoons" bleibt
+        // Teil der Bezeichnung, einheit() ist null.
+        assertThat(ginger.einheit()).isNull();
+        assertThat(ginger.bezeichnung()).startsWith("tablespoons");
     }
 
     @Test
-    void erkenntBekannteEinheitNachDerMenge() {
+    void kompletterRestBleibtBezeichnungOhneEinheitAbzutrennen() {
         List<ParsedItem> items = parser.parse(BEISPIEL_REZEPT);
 
         ParsedItem panko = items.stream()
                 .filter(i -> i.bezeichnung().contains("panko"))
                 .findFirst().orElseThrow();
-        assertThat(panko.einheit()).isEqualTo("cup");
         assertThat(panko.menge()).isEqualByComparingTo(new BigDecimal("0.3333"));
+        assertThat(panko.einheit()).isNull();
+        assertThat(panko.bezeichnung()).isEqualTo("cup panko or other plain bread crumbs");
     }
 
     @Test
-    void fehlendeBekannteEinheitFaelltAufStkZurueckBezeichnungBleibtVollstaendig() {
+    void garlicZeileBleibtVollstaendigAlsBezeichnungOhneEinheit() {
         List<ParsedItem> items = parser.parse(BEISPIEL_REZEPT);
 
-        // "3 garlic cloves, grated or minced" - "cloves" ist kein Wort aus
-        // unserer bekannten Einheitenliste, bleibt also Teil der Bezeichnung
         ParsedItem garlic = items.stream()
                 .filter(i -> i.bezeichnung().contains("garlic"))
                 .findFirst().orElseThrow();
-        assertThat(garlic.einheit()).isEqualTo("Stk");
+        assertThat(garlic.einheit()).isNull();
         assertThat(garlic.menge()).isEqualByComparingTo(new BigDecimal("3"));
         assertThat(garlic.bezeichnung()).isEqualTo("garlic cloves, grated or minced");
     }
 
     @Test
-    void zeileOhneErkennbareMengeBekommtDefaultMengeUndEinheit() {
+    void zeileOhneErkennbareMengeBekommtDefaultMengeUndKeineEinheit() {
         List<ParsedItem> items = parser.parse(BEISPIEL_REZEPT);
 
         ParsedItem rice = items.stream()
                 .filter(i -> i.bezeichnung().startsWith("White rice"))
                 .findFirst().orElseThrow();
         assertThat(rice.menge()).isEqualByComparingTo(BigDecimal.ONE);
-        assertThat(rice.einheit()).isEqualTo("Stk");
+        assertThat(rice.einheit()).isNull();
     }
 
     @Test
@@ -123,6 +125,31 @@ class NytCookingParserTest {
         List<ParsedItem> items = parser.parse("Irgendein Text ohne die erwarteten Marker");
 
         assertThat(items).isEmpty();
+    }
+
+    @Test
+    void bereichsangabeNimmtDenHoeherenWert() {
+        String text = """
+                Titel
+                1 Portion
+                -
+                3 to 4 Tomaten
+                2-3 Zwiebeln
+                ----------
+                Footer
+                """;
+
+        List<ParsedItem> items = parser.parse(text);
+
+        ParsedItem tomaten = items.stream()
+                .filter(i -> i.bezeichnung().contains("Tomaten"))
+                .findFirst().orElseThrow();
+        assertThat(tomaten.menge()).isEqualByComparingTo(new BigDecimal("4"));
+
+        ParsedItem zwiebeln = items.stream()
+                .filter(i -> i.bezeichnung().contains("Zwiebeln"))
+                .findFirst().orElseThrow();
+        assertThat(zwiebeln.menge()).isEqualByComparingTo(new BigDecimal("3"));
     }
 
 }

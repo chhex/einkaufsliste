@@ -2,26 +2,38 @@ package ch.chris.einkaufsliste.service.importer;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Erkennt Menge + Einheit am Anfang einer Freitext-Zeile (z.B.
- * "1½ tablespoons ginger" oder "2 Zwiebeln") und liefert den Rest als
- * Bezeichnung. Gemeinsam genutzt von allen Import-Parsern (Strategy Pattern,
- * siehe GroceryListParser) - vermeidet Duplikation der Mengen/Einheit-Logik.
+ * Erkennt nur noch die Anzahl am Anfang einer Freitext-Zeile (z.B. "1½ ..."
+ * oder "3 to 4 ...") und liefert den KOMPLETTEN Rest als Bezeichnung -
+ * KEIN Einheit-Raten mehr (fruehere Version versuchte, ein bekanntes
+ * Einheiten-Wort direkt nach der Menge zu erkennen und abzutrennen; das
+ * lieferte zu oft falsche/unpassende Ergebnisse). Einheit bleibt bewusst
+ * leer und wird vom Nutzer in der Vorschau oder spaeter direkt am Item
+ * nachgetragen (seit Kurzem ohnehin optional, siehe Item-Entity).
  * <p>
- * Bewusst pragmatisch/heuristisch (siehe Klassenkommentare der Parser): bei
- * Unklarheit lieber ganze Zeile als Bezeichnung mit Default-Menge/-Einheit,
- * als eine falsche Interpretation zu erzwingen - die Vorschau vor Uebernahme
- * (Anforderung 6) faengt Fehlinterpretationen ohnehin ab.
+ * Ist die Anzahl ein Bereich ("3 to 4", "3-4"), wird der HOEHERE Wert
+ * genommen (Anforderung: lieber zu viel einkaufen als zu wenig).
+ * <p>
+ * Gemeinsam genutzt von allen Import-Parsern (Strategy Pattern, siehe
+ * GroceryListParser) - vermeidet Duplikation der Mengen-Logik.
  */
 final class IngredientTextParser {
 
+    // Eine Zahl (inkl. optionalem Unicode-Bruch), optional gefolgt von
+    // "bis"/"to"/"-" und einer zweiten Zahl (Bereich) - danach der Rest der
+    // Zeile als Bezeichnung. Trennzeichen zwischen Zahl und Rest ist absichtlich
+    // OPTIONAL (\s*, nicht \s+): Formate wie "500g Butter" (Menge klebt direkt
+    // an der Einheit, kein Leerzeichen) sollen die Menge trotzdem erkennen -
+    // "g" landet dann einfach als Teil der Bezeichnung ("g Butter"), da wir
+    // keine Einheit mehr herausparsen.
     private static final Pattern LEADING_QUANTITY = Pattern.compile(
-            "^\\s*([0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:\\.[0-9]+)?)\\s+(.*)$");
+            "^\\s*([0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:\\.[0-9]+)?)"
+                    + "(?:\\s*(?:to|bis|-)\\s*([0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:\\.[0-9]+)?))?"
+                    + "\\s*(.*)$");
 
     private static final Map<Character, BigDecimal> UNICODE_FRACTIONS = Map.of(
             '¼', new BigDecimal("0.25"),
@@ -35,21 +47,6 @@ final class IngredientTextParser {
             '⅞', new BigDecimal("0.875")
     );
 
-    // Bekannte Einheiten-Woerter direkt nach der Menge - alles andere bleibt
-    // Teil der Bezeichnung (z.B. "3 garlic cloves" -> Einheit "Stk", da
-    // "cloves" hier eher zaehlendes Substantiv als echte Masseinheit ist).
-    private static final List<String> KNOWN_UNITS = List.of(
-            "tablespoons", "tablespoon", "tbsp",
-            "teaspoons", "teaspoon", "tsp",
-            "cups", "cup",
-            "pounds", "pound", "lb", "lbs",
-            "ounces", "ounce", "oz",
-            "grams", "gram", "g",
-            "kilograms", "kilogram", "kg",
-            "milliliters", "milliliter", "ml",
-            "liters", "liter", "l"
-    );
-
     private IngredientTextParser() {
         // reine Utility-Klasse
     }
@@ -58,24 +55,22 @@ final class IngredientTextParser {
         Matcher matcher = LEADING_QUANTITY.matcher(line);
         if (!matcher.matches()) {
             // Keine erkennbare Menge am Zeilenanfang - ganze Zeile wird
-            // Bezeichnung, Menge/Einheit auf sinnvollen Default.
-            return new ParsedItem(line, BigDecimal.ONE, "Stk", kategorie);
+            // Bezeichnung, Menge auf sinnvollen Default, Einheit leer.
+            return new ParsedItem(line, BigDecimal.ONE, null, kategorie);
         }
 
         BigDecimal menge = parseQuantity(matcher.group(1));
-        String rest = matcher.group(2);
-
-        for (String unit : KNOWN_UNITS) {
-            if (rest.toLowerCase().startsWith(unit + " ") || rest.toLowerCase().equals(unit)) {
-                String bezeichnung = rest.substring(unit.length()).strip();
-                return new ParsedItem(bezeichnung, menge, unit, kategorie);
+        String zweiteZahl = matcher.group(2);
+        if (zweiteZahl != null && !zweiteZahl.isEmpty()) {
+            // Bereichsangabe (z.B. "3 to 4") - der HOEHERE Wert gewinnt.
+            BigDecimal obereGrenze = parseQuantity(zweiteZahl);
+            if (obereGrenze.compareTo(menge) > 0) {
+                menge = obereGrenze;
             }
         }
 
-        // Kein bekanntes Einheiten-Wort direkt nach der Menge (z.B.
-        // "3 garlic cloves, grated" oder "2 Zwiebeln") - Default "Stk",
-        // kompletter Rest bleibt Teil der Bezeichnung.
-        return new ParsedItem(rest, menge, "Stk", kategorie);
+        String bezeichnung = matcher.group(3).strip();
+        return new ParsedItem(bezeichnung, menge, null, kategorie);
     }
 
     private static BigDecimal parseQuantity(String raw) {

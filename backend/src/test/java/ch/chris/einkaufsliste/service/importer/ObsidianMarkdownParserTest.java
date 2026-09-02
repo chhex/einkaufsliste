@@ -69,20 +69,23 @@ class ObsidianMarkdownParserTest {
     }
 
     @Test
-    void erkenntMengeUndEinheitInnerhalbEinerZeile() {
+    void erkenntMengeAuchOhneLeerzeichenVorDerEinheit() {
         List<ParsedItem> items = parser.parse(BEISPIEL);
 
         ParsedItem zwiebeln = items.stream()
                 .filter(i -> i.bezeichnung().equals("Zwiebeln"))
                 .findFirst().orElseThrow();
         assertThat(zwiebeln.menge()).isEqualByComparingTo(new BigDecimal("2"));
-        assertThat(zwiebeln.einheit()).isEqualTo("Stk"); // "Zwiebeln" ist keine bekannte Einheit
+        assertThat(zwiebeln.einheit()).isNull(); // Einheit wird nicht mehr geraten
 
+        // "500g Butter" - Menge klebt direkt an der Einheit (kein Leerzeichen).
+        // "g" wird NICHT als Einheit erkannt, bleibt Teil der Bezeichnung.
         ParsedItem butter = items.stream()
-                .filter(i -> i.bezeichnung().equals("Butter"))
+                .filter(i -> i.bezeichnung().contains("Butter"))
                 .findFirst().orElseThrow();
         assertThat(butter.menge()).isEqualByComparingTo(new BigDecimal("500"));
-        assertThat(butter.einheit()).isEqualTo("g");
+        assertThat(butter.einheit()).isNull();
+        assertThat(butter.bezeichnung()).isEqualTo("g Butter");
     }
 
     @Test

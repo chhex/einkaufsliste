@@ -64,8 +64,9 @@ class ImportServiceTest {
                 """);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).bezeichnung()).isEqualTo("Mehl");
-        assertThat(result.get(0).einheit()).isEqualTo("cups");
+        assertThat(result.get(0).bezeichnung()).isEqualTo("cups Mehl");
+        assertThat(result.get(0).einheit()).isNull();
+        assertThat(result.get(0).menge()).isEqualByComparingTo(new java.math.BigDecimal("2"));
     }
 
 }

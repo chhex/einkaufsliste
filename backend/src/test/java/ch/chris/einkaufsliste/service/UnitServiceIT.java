@@ -31,9 +31,9 @@ class UnitServiceIT extends AbstractIntegrationTest {
 
     @Test
     void createLehntDuplikatNamenAb() {
-        unitService.create("Flasche", "Fl");
+        unitService.create("Cup", "Cup");
 
-        assertThatThrownBy(() -> unitService.create("Flasche", "Fl2"))
+        assertThatThrownBy(() -> unitService.create("Cup", "Cup2"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
