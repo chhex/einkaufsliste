@@ -23,5 +23,5 @@ jobs:
             cd /apps/einkaufsliste || exit
             git pull 
             
-            docker compose -f docker-compose.prod.yaml down
-            docker compose -f docker-compose.prod.yaml up --build -d
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up --build -d
