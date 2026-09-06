@@ -52,7 +52,7 @@ services:
         - backend
 
   # Baut das Frontend bei jedem Deployment im Docker-Container vor
-   frontend:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
