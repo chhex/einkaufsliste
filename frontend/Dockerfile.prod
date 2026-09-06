@@ -10,4 +10,4 @@ RUN npm run build
 FROM alpine:latest
 WORKDIR /srv
 # Kopiert den SvelteKit-Build direkt in das Volume unter /srv/build
-COPY --from=builder /app/build /srv/build
+COPY --from=builder /app/dist /srv/build
