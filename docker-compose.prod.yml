@@ -53,7 +53,7 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/comprarli.conf:/etc/nginx/conf.d/comprarli.conf
       - /etc/letsencrypt:/etc/letsencrypt:ro
     networks:
       - app-net
