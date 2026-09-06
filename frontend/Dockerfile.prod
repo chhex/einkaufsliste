@@ -1,4 +1,4 @@
-# Stage 1: Build-Prozess
+# --- Stage 1: Build-Prozess ---
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -6,8 +6,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2: Production-Image
-FROM alpine:latest
-WORKDIR /srv
-# Kopiert den SvelteKit-Build direkt in das Volume unter /srv/build
-COPY --from=builder /app/dist /srv/build
+# --- Stage 2: Production-Image mit Nginx ---
+FROM nginx:alpine
+# Kopiert den Vite-Build in das Standard-Webverzeichnis von Nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 80

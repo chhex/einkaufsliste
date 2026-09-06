@@ -52,14 +52,15 @@ services:
         - backend
 
   # Baut das Frontend bei jedem Deployment im Docker-Container vor
-  frontend-builder:
+   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    image: pitcher-frontend-builder:latest
-    command: echo "Frontend built successfully"
-    volumes:
-      - frontend_dist:/srv
+    container_name: einkaufsliste-frontend
+    restart: always
+    ports:
+      - "3000:80"
+
 
 
 volumes:
