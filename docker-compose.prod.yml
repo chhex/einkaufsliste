@@ -43,6 +43,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     container_name: einkaufsliste-frontend
     restart: always
     ports:
@@ -52,8 +54,10 @@ services:
       - backend
     volumes:
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     networks:
       - app-net
+
 
 volumes:
   einkaufsliste-db-data:

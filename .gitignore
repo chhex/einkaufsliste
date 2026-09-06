@@ -23,6 +23,9 @@ frontend/.vite/
 .env.local
 .env.render
 *.env
+nginx/ssl/nginx.key
+nginx/ssl/nginx.crt
+
 
 # --- Docker ---
 docker-compose.override.yml
