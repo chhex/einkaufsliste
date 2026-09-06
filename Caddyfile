@@ -1,0 +1,6 @@
+static.172.224.90.157.clients.your-server.de {
+    # Leitet API- oder Backend-Anfragen an Spring Boot auf Port 8080 weiter
+    reverse_proxy localhost:8080
+
+    encode gzip
+}
