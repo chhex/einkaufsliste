@@ -44,12 +44,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     container_name: einkaufsliste-frontend
     restart: always
     ports:
-      - "0.0.0.0:80:80"
-      - "0.0.0.0:443:443"
+      - "80"
+      - "443"
     depends_on:
       - backend
     volumes:
