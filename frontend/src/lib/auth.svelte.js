@@ -25,6 +25,9 @@ export const auth = {
      * und unser eigenes JWT ausstellt.
      */
     async loginWithGoogleIdToken(idToken) {
+        console.log('Login mit Google-ID-Token', idToken);
+        console.log('Backend-URL:', `${API_BASE_URL}/api/auth/google`);
+
         const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
