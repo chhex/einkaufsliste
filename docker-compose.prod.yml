@@ -1,14 +1,16 @@
+name: einkaufsliste-prod
+
 services:
   db:
     image: postgres:17-alpine
-    container_name: einkaufsliste-db
+    container_name: einkaufsliste-db-prod
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME:-einkaufsliste}
       POSTGRES_USER: ${DB_ADMIN_USER}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD}
     volumes:
-      - einkaufsliste-db-data:/var/lib/postgresql/data
+      - einkaufsliste-db-data-prod:/var/lib/postgresql/data
       - ./backend/db-init:/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER} -d ${DB_NAME:-einkaufsliste}"]
@@ -21,7 +23,7 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: einkaufsliste-backend
+    container_name: einkaufsliste-backend-prod
     restart: always
     depends_on:
       db:
@@ -44,7 +46,7 @@ services:
       args:
         - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
         - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-    container_name: einkaufsliste-frontend
+    container_name: einkaufsliste-frontend-prod
     restart: always
     ports:
       - "80:80"
@@ -59,7 +61,7 @@ services:
 
 
 volumes:
-  einkaufsliste-db-data:
+  einkaufsliste-db-data-prod:
 
 networks:
   app-net:

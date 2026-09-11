@@ -1,7 +1,9 @@
+name: einkaufsliste-local
+
 services:
   db:
     image: postgres:17-alpine
-    container_name: einkaufsliste-db
+    container_name: einkaufsliste-db-local
     environment:
       POSTGRES_DB: ${DB_NAME:-einkaufsliste}
       # Admin-User: besitzt das Schema, wird von Flyway fuer Migrationen genutzt.
@@ -12,7 +14,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - einkaufsliste-db-data:/var/lib/postgresql/data
+      - einkaufsliste-db-data-local:/var/lib/postgresql/data
       - ./backend/db-init:/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USER:-einkaufsliste_admin} -d ${DB_NAME:-einkaufsliste}"]
@@ -23,7 +25,7 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: einkaufsliste-backend
+    container_name: einkaufsliste-backend-local
     depends_on:
       db:
         condition: service_healthy
@@ -39,4 +41,4 @@ services:
       - "8080:8080"
 
 volumes:
-  einkaufsliste-db-data:
+  einkaufsliste-db-data-local:
