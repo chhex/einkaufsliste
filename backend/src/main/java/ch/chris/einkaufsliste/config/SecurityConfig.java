@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Echte Security-Konfiguration: JWT-Bearer-Auth (siehe JwtAuthenticationFilter),
- * stateless (kein Server-Session-Speicher noetig, robust bei Render-Cold-Starts).
+ * stateless (kein Server-Session-Speicher noetig).
  * <p>
  * Aktiv in allen Profilen AUSSER "test" - Tests nutzen stattdessen
  * TestSecurityConfig (permissiv), damit IT-Tests keine echten Google-Logins
@@ -64,15 +64,13 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // TODO: Vercel-Produktions-URL des Svelte-Frontends ergaenzen, sobald
-        // Schritt 6/7 (Client-Deployment) steht.
         // localhost:8000 ist fuer die Standalone-Google-Login-Testseite
         // (scripts/auth-test/, per "python3 -m http.server" served).
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:5173",
                 "http://localhost:8000",
                 "https://comprarli.com",
-                "https://*.vercel.app"
+                "https://www.comprarli.com"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

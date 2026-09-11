@@ -1,0 +1,54 @@
+name: CI/CD
+
+# Vorher zwei entkoppelte Workflows (backend-ci.yml, deploy.yml) - deploy.yml
+# triggerte unabhaengig davon, ob die Tests ueberhaupt liefen/gruen waren.
+# Jetzt EIN Workflow: deploy braucht IMMER einen erfolgreichen test-Job
+# (kein Path-Filter mehr auf "backend/**" - Tests laufen bei JEDEM Push auf
+# main, damit auch reine Frontend-/Docker-Aenderungen nicht ungeprueft
+# deployt werden).
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build and test (inkl. Testcontainers-Integrationstests)
+        run: mvn -B clean verify
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH ausführen
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /apps/einkaufsliste || exit
+
+            git pull
+
+            # Bewusst OHNE vorangehendes "down": "up --build -d" baut/startet
+            # nur geaenderte Services neu, der db-Container laeuft ohne
+            # Unterbruch weiter. Frueher riss "down" vor "up" bei JEDEM
+            # Deploy auch die DB kurz runter, unnoetig.
+            docker compose -f docker-compose.prod.yml up --build -d

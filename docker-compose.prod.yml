@@ -34,8 +34,6 @@ services:
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-    ports:
-      - "8080:8080"
     networks:
       - app-net
 

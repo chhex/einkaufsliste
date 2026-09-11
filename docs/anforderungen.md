@@ -104,17 +104,17 @@ Unit (erweiterbar, vorbefüllt) {
 | Frontend | Svelte (PWA-fähig für Homescreen-Installation) |
 | Datenhaltung | Postgres via Docker (von Anfang an, keine H2-Zwischenlösung) |
 | Sync | Polling-Intervall (z. B. alle 5–10s), kein WebSocket vorerst |
-| Deployment Frontend | Vercel (GitHub-Anbindung, wie beim andi-Projekt) |
-| Deployment Backend + DB | Render (Dockerfile-basiert, managed Postgres inkl. Backups; guter Free-Einstieg, gute EU-Nähe, Cold-Start nach Inaktivität bei privater Nutzung vernachlässigbar) |
+| Deployment | Hetzner-VPS, alles per Docker: Postgres + Backend + gebautes Svelte-Frontend hinter nginx (TLS via Certbot/Let's Encrypt), eigene Domain comprarli.com. Frontend ruft die API same-origin auf (`/api/...`), nginx proxied intern an den Backend-Container — kein separat exponierter Backend-Port |
 | REST-API | DTOs (Java Records) statt Entities über die Grenze — Entities verlassen nie die Transaktion; einheitliches Fehlerformat via @RestControllerAdvice (IllegalArgumentException → 400); `userId` aktuell als Query-/Body-Parameter (Platzhalter bis Google-OAuth2 verdrahtet ist, danach aus dem authentifizierten Principal) |
-| Auth | Frontend macht den Google-Login (Google Identity Services), schickt nur das ID-Token ans Backend; Backend verifiziert es (google-api-client), provisioniert/findet den User, stellt ein eigenes, stateless JWT aus (jjwt, HMAC) für alle weiteren API-Aufrufe. Kein Server-Session-Speicher nötig (robust bei Render-Cold-Starts). Separates `test`-Spring-Profil (TestSecurityConfig, permissiv) für IT-/Unit-Tests — kein echter Google-Login beim Testen nötig |
-| Lokale Entwicklung | docker-compose (Postgres + Spring Boot), 1:1 auf Render übertragbar |
+| Auth | Frontend macht den Google-Login (Google Identity Services), schickt nur das ID-Token ans Backend; Backend verifiziert es (google-api-client), provisioniert/findet den User, stellt ein eigenes, stateless JWT aus (jjwt, HMAC) für alle weiteren API-Aufrufe. Kein Server-Session-Speicher nötig. Separates `test`-Spring-Profil (TestSecurityConfig, permissiv) für IT-/Unit-Tests — kein echter Google-Login beim Testen nötig |
+| Lokale Entwicklung | docker-compose (Postgres + Spring Boot), 1:1 auf den Produktions-Server übertragbar (docker-compose.prod.yml) |
 | DB-Migration | Flyway (Community Edition) — plain SQL, passt zum Single-Database-Setup (Postgres), kein Multi-DB-Bedarf |
 | DB-User-Trennung | Admin-User (besitzt Schema, führt Flyway-Migrationen aus) + separater Schema-/App-User (nur DML-Rechte: SELECT/INSERT/UPDATE/DELETE, keine DDL-Rechte) für die Laufzeit-Verbindung der App |
-| App-User-Bootstrap | Einmaliges, plattformunabhängiges Skript (`bootstrap-app-user.sh`, Standard-`psql`-Env-Vars) statt automatischem Docker-Init — funktioniert identisch lokal und bei gemanagten DBs (Render), die kein Init-Skript unterstützen; Admin-User wird von der jeweiligen Plattform bereitgestellt (Docker-Image bzw. Render) |
-| Secrets | Lokal über `.env` (nicht committed, `.env.example` als Vorlage im Repo); bei Render über Dashboard-Env-Vars — nirgends Klartext-Credentials im Code/Repo |
+| App-User-Bootstrap | Einmaliges, plattformunabhängiges Skript (`bootstrap-app-user.sh`, Standard-`psql`-Env-Vars) statt automatischem Docker-Init — funktioniert identisch lokal und auf dem Server |
+| Secrets | Über `.env` (nicht committed, `.env.example` als Vorlage im Repo); auf dem Server ebenfalls per `.env` — nirgends Klartext-Credentials im Code/Repo |
 | Test-Kategorien | `*Test` (reine Unit-Tests, kein Docker, laufen bei `mvn test`) vs. `*IT` (Testcontainers-Integrationstests, laufen bei `mvn verify`) — Domänenlogik in Entities wird so ohne Docker-Abhängigkeit testbar |
-| Repo-Struktur | Monorepo (`backend/`, `frontend/`, `docker-compose.yml` im Root); Render/Vercel nutzen Root-Directory-Einstellung |
+| Repo-Struktur | Monorepo (`backend/`, `frontend/`, `docker-compose.yml`/`docker-compose.prod.yml` im Root) |
+| CI/CD | GitHub Actions (`.github/workflows/ci-cd.yml`): Backend-Tests müssen grün sein, bevor per SSH auf den Server deployt wird (`docker compose -f docker-compose.prod.yml up --build -d`) |
 
 ## 5. Entwicklungsprozess (iterativ)
 

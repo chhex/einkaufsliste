@@ -1,10 +1,10 @@
 #!/bin/bash
-# Bootstrappt den lokalen App-User OHNE manuelle Eingabe von Credentials -
-# liest alles automatisch aus .env. Voraussetzung: "docker compose up -d db"
-# laeuft bereits.
+# Bootstrappt den App-User auf dem Produktions-Server OHNE manuelle Eingabe
+# von Credentials - liest alles automatisch aus .env. Voraussetzung: der
+# db-Container aus docker-compose.prod.yml laeuft bereits.
 #
-# Nutzung:
-#   ./bootstrap-local.sh
+# Nutzung (auf dem Server, im Projektverzeichnis):
+#   ./bootstrap-prod.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 

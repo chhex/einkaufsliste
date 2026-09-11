@@ -21,10 +21,7 @@ frontend/.vite/
 # --- Env / Secrets ---
 .env
 .env.local
-.env.render
 *.env
-nginx/ssl/nginx.key
-nginx/ssl/nginx.crt
 
 
 # --- Docker ---
