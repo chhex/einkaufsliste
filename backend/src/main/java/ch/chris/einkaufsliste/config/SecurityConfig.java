@@ -53,7 +53,15 @@ public class SecurityConfig {
                                 // Bean im "prod"-Profil gar nicht mehr (@Profile("!prod")),
                                 // dieser permitAll-Eintrag ist dort also wirkungslos/harmlos.
                                 "/api/dev/**",
-                                "/actuator/**"
+                                "/actuator/**",
+                                // Spring Boots interne Fehlerbehandlung: wenn kein Handler
+                                // gefunden wird (z.B. genau der Fall oben, DevLoginController
+                                // fehlt in Produktion), leitet der Container intern auf /error
+                                // weiter - das ist aus Security-Sicht ein NEUER Request und
+                                // faellt ohne diesen Eintrag unter anyRequest().authenticated(),
+                                // wird selbst mit 403 abgelehnt. Ergebnis ohne diesen Eintrag:
+                                // JEDE 404-Situation wird faelschlich zu einem 403.
+                                "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
