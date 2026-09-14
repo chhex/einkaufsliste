@@ -60,7 +60,7 @@ class ListControllerIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.status").value("AKTIV"))
                 .andReturn().getResponse().getHeader("Location");
 
-        mockMvc.perform(get(location))
+        mockMvc.perform(get(location).with(authentication(authFor(owner.getId()))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Migros"))
                 .andExpect(jsonPath("$.ownerName").value("X"))
