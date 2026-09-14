@@ -121,12 +121,17 @@
 
     {#if error}
         <p class="mb-3 text-sm text-error">{error}</p>
+        {#if lists.length === 0 && !loading}
+            <button class="btn btn-outline btn-sm" onclick={loadLists}>Erneut versuchen</button>
+        {/if}
     {/if}
 
     {#if loading}
         <p class="text-base-content/60">Lade Listen...</p>
     {:else if lists.length === 0}
-        <p class="text-base-content/60">Noch keine Listen – leg oben Deine erste an.</p>
+        {#if !error}
+            <p class="text-base-content/60">Noch keine Listen – leg oben Deine erste an.</p>
+        {/if}
     {:else}
         {#if activeLists().length > 0}
             <ul class="flex flex-col gap-2">
