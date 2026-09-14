@@ -36,6 +36,9 @@ services:
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Deaktiviert DevLoginController komplett (siehe @Profile("!prod")
+      # dort) - die Google-Login-Umgehung darf in Produktion nicht existieren.
+      SPRING_PROFILES_ACTIVE: prod
     networks:
       - app-net
 

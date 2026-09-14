@@ -145,11 +145,18 @@ eigenes JWT aus. Alle weiteren Requests: `Authorization: Bearer <token>`.
   Frontend-Origin(s) autorisieren (`https://comprarli.com`,
   `http://localhost:5173`, ...), Client-ID als `GOOGLE_CLIENT_ID` setzen
 - **`/api/dev/login`**: provisorischer Ersatz für den echten Google-Login
-  (liefert ebenfalls ein JWT) — nützlich für curl-Tests, **muss vor
-  breiterer Nutzung entfernt oder abgesichert werden** (noch offen)
-- **Autorisierung**: aktuell prüft das Backend nur, ob ein Request
-  überhaupt authentifiziert ist — **nicht**, ob der User Owner/Member der
-  angefragten Liste ist (noch offen, siehe `docs/anforderungen.md`)
+  (liefert ebenfalls ein JWT) — nützlich für curl-Tests. Existiert als Bean
+  im `prod`-Spring-Profil gar nicht mehr (`@Profile("!prod")` an
+  `DevLoginController`, aktiviert via `SPRING_PROFILES_ACTIVE=prod` in
+  `docker-compose.prod.yml`) — in Produktion komplett unerreichbar (404)
+- **Autorisierung**: `ListService.assertAccess`/`assertOwner` prüfen vor
+  jeder Aktion, ob der authentifizierte User Owner/Mitglied der
+  angefragten Liste ist. Kollaborative Aktionen (lesen, Items pflegen,
+  Name/Datum ändern, archivieren/reaktivieren): Owner ODER Mitglied.
+  Destruktive/verwaltende Aktionen (Liste löschen, Mitglieder
+  hinzufügen/entfernen): nur der Owner — Ausnahme: ein Mitglied darf sich
+  selbst entfernen. Fehlende Berechtigung → `403` (`ForbiddenException`,
+  siehe `GlobalExceptionHandler`)
 - **Tests**: eigenes `test`-Spring-Profil (`TestSecurityConfig`, permissiv)
   aktiv über `@ActiveProfiles("test")` in `AbstractIntegrationTest` — IT-/
   MockMvc-Tests brauchen keinen echten Google-Login
@@ -193,6 +200,5 @@ Anforderungsdokument, Abschnitt "Entwicklungsprozess") — alle abgeschlossen:
 7. ✅ Client + echtes Backend, deployt
 
 **Offen (siehe `docs/anforderungen.md`, Abschnitt "Offene Punkte")**:
-Autorisierungslücke schliessen, `/api/dev/login` absichern, PWA,
-Autocomplete/Self-Learning für Artikelnamen, Mehrsprachigkeit,
-Einkaufsorte.
+PWA, Autocomplete/Self-Learning für Artikelnamen, Mehrsprachigkeit,
+Certbot-Erneuerung ohne Automatisierungs-Hook.

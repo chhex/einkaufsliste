@@ -174,6 +174,36 @@ public class ListService {
                 .orElse(list.getSortierung());
     }
 
+    /**
+     * Wirft ForbiddenException, falls der User weder Owner noch Mitglied
+     * dieser Liste ist. Fuer alle "kollaborativen" Aktionen (lesen, Items
+     * verwalten, Name/Datum aendern, archivieren/reaktivieren) - jedes
+     * Mitglied darf das, nicht nur der Owner.
+     */
+    @Transactional(readOnly = true)
+    public void assertAccess(Long listId, Long userId) {
+        ShoppingList list = getOrThrow(listId);
+        boolean hatZugriff = list.getOwner().getId().equals(userId)
+                || list.getMembers().stream().anyMatch(m -> m.getUser().getId().equals(userId));
+        if (!hatZugriff) {
+            throw new ForbiddenException("Kein Zugriff auf diese Liste");
+        }
+    }
+
+    /**
+     * Wirft ForbiddenException, falls der User nicht der Owner dieser Liste
+     * ist. Fuer destruktive/verwaltende Aktionen, die bewusst NICHT jedem
+     * Mitglied offenstehen sollen: Liste loeschen, Mitglieder hinzufuegen/
+     * entfernen (Ausnahme: sich selbst entfernen, siehe ListController).
+     */
+    @Transactional(readOnly = true)
+    public void assertOwner(Long listId, Long userId) {
+        ShoppingList list = getOrThrow(listId);
+        if (!list.getOwner().getId().equals(userId)) {
+            throw new ForbiddenException("Nur der Owner dieser Liste darf das");
+        }
+    }
+
     private ShoppingList getOrThrow(Long listId) {
         return shoppingListRepository.findById(listId)
                 .orElseThrow(() -> new IllegalArgumentException("Liste nicht gefunden: " + listId));

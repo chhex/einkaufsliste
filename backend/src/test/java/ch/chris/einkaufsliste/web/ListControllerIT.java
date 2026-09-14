@@ -141,6 +141,68 @@ class ListControllerIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
+    @Test
+    void fremderUserBekommt403BeimLesenEinerFremdenListe() throws Exception {
+        AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "owner3@x.com", "Owner3"));
+        AppUser fremder = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "fremd@x.com", "Fremd"));
+
+        String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new CreateListRequestJson("Privat"))))
+                .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(get(location).with(authentication(authFor(fremder.getId()))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void mitgliedDarfListeLesenAberNichtLoeschen() throws Exception {
+        AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "owner4@x.com", "Owner4"));
+        AppUser mitglied = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "mitglied@x.com", "Mitglied"));
+
+        String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new CreateListRequestJson("Gemeinsam"))))
+                .andReturn().getResponse().getHeader("Location");
+        mockMvc.perform(post(location + "/members")
+                .with(authentication(authFor(owner.getId())))
+                .contentType("application/json")
+                .content("{\"email\":\"mitglied@x.com\"}"));
+
+        // Mitglied darf lesen ...
+        mockMvc.perform(get(location).with(authentication(authFor(mitglied.getId()))))
+                .andExpect(status().isOk());
+
+        // ... aber nicht loeschen (Owner-only)
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(location)
+                        .with(authentication(authFor(mitglied.getId()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void mitgliedDarfSichSelbstEntfernenOhneOwnerZuSein() throws Exception {
+        AppUser owner = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "owner5@x.com", "Owner5"));
+        AppUser mitglied = appUserRepository.save(new AppUser("g-" + System.nanoTime(), "mitglied2@x.com", "Mitglied2"));
+
+        String location = mockMvc.perform(post("/api/lists")
+                        .with(authentication(authFor(owner.getId())))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(new CreateListRequestJson("Gemeinsam2"))))
+                .andReturn().getResponse().getHeader("Location");
+        mockMvc.perform(post(location + "/members")
+                .with(authentication(authFor(owner.getId())))
+                .contentType("application/json")
+                .content("{\"email\":\"mitglied2@x.com\"}"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete(location + "/members/" + mitglied.getId())
+                        .with(authentication(authFor(mitglied.getId()))))
+                .andExpect(status().isNoContent());
+    }
+
     private record CreateListRequestJson(String name) {
     }
 

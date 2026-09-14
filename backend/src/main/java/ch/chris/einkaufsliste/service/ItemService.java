@@ -93,4 +93,15 @@ public class ItemService {
                 .orElseThrow(() -> new IllegalArgumentException("Item nicht gefunden: " + itemId));
     }
 
+    /**
+     * Wirft ForbiddenException, falls der User weder Owner noch Mitglied
+     * der Liste ist, zu der dieses Item gehoert - loest dazu erst die Liste
+     * ueber das Item auf und delegiert dann an ListService.assertAccess.
+     */
+    @Transactional(readOnly = true)
+    public void assertAccess(Long itemId, Long userId) {
+        Item item = getOrThrow(itemId);
+        listService.assertAccess(item.getList().getId(), userId);
+    }
+
 }

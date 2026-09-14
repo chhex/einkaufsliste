@@ -26,16 +26,19 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * "userId" kommt hier NIE mehr vom Client (Query/Body) fuer die Frage "wer
+ * "userId" kommt hier NIE vom Client (Query/Body) fuer die Frage "wer
  * bin ich" - immer ueber @AuthenticationPrincipal aus dem verifizierten JWT
  * (siehe JwtAuthenticationFilter). Waere es weiterhin ein Client-Parameter,
  * koennte sich ein eingeloggter User als beliebiger anderer User ausgeben.
  * <p>
- * TODO (Autorisierungs-Luecke, noch offen): aktuell kann JEDER eingeloggte
- * User JEDE Liste per ID aendern/archivieren/Mitglieder verwalten, wenn er
- * deren ID kennt - es gibt noch keine Pruefung "ist der User Owner/Member
- * dieser Liste". Fuer den privaten Nutzungsrahmen (Du + Familie) aktuell
- * vertretbar, sollte aber vor breiterer Nutzung ergaenzt werden.
+ * Autorisierung (wer darf WAS mit einer bestimmten Liste tun): jeder
+ * Endpoint mit einer Listen-ID im Pfad ruft zuerst listService.assertAccess
+ * (Owner ODER Mitglied - fuer kollaborative Aktionen: lesen, Items pflegen,
+ * Name/Datum aendern, archivieren/reaktivieren) oder listService.assertOwner
+ * (nur der Owner - fuer destruktive/verwaltende Aktionen: Liste loeschen,
+ * Mitglieder hinzufuegen/entfernen) auf, bevor irgendwas passiert. Eine
+ * fehlende Berechtigung wirft ForbiddenException -> 403 (siehe
+ * GlobalExceptionHandler).
  */
 @RestController
 @RequestMapping("/api/lists")
@@ -52,6 +55,9 @@ public class ListController {
     @PostMapping
     public ResponseEntity<ListResponse> create(@AuthenticationPrincipal Long userId,
                                                 @Valid @RequestBody CreateListRequest request) {
+        // Keine Autorisierungspruefung noetig: eine neue Liste anzulegen
+        // erfordert keine bestehende Berechtigung, der Ersteller wird
+        // automatisch Owner.
         AppUser owner = userService.get(userId);
         ShoppingList list = listService.create(request.name(), request.einkaufsdatum(), owner);
         return ResponseEntity.created(URI.create("/api/lists/" + list.getId()))
@@ -59,43 +65,59 @@ public class ListController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Void> update(@PathVariable Long id, @Valid @RequestBody UpdateListRequest request) {
+    public ResponseEntity<Void> update(@AuthenticationPrincipal Long userId,
+                                        @PathVariable Long id,
+                                        @Valid @RequestBody UpdateListRequest request) {
+        listService.assertAccess(id, userId);
         listService.update(id, request.name(), request.einkaufsdatum());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     public List<ListResponse> getAccessibleLists(@AuthenticationPrincipal Long userId) {
+        // Keine separate Pruefung noetig: die Query selbst filtert bereits
+        // auf Listen, bei denen der User Owner/Mitglied ist.
         return listService.getAccessibleByUser(userId).stream()
                 .map(ListResponse::summary)
                 .toList();
     }
 
     @GetMapping("/{id}")
-    public ListResponse get(@PathVariable Long id) {
+    public ListResponse get(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        listService.assertAccess(id, userId);
         return ListResponse.from(listService.get(id));
     }
 
     @PostMapping("/{id}/archive")
-    public ResponseEntity<Void> archive(@PathVariable Long id) {
+    public ResponseEntity<Void> archive(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        listService.assertAccess(id, userId);
         listService.archive(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/reactivate")
-    public ResponseEntity<Void> reactivate(@PathVariable Long id) {
+    public ResponseEntity<Void> reactivate(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        listService.assertAccess(id, userId);
         listService.reactivate(id);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        // Bewusst assertOwner statt assertAccess: eine Liste komplett zu
+        // loeschen betrifft alle Mitglieder, das soll nicht jedes einzelne
+        // Mitglied im Alleingang koennen.
+        listService.assertOwner(id, userId);
         listService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/members")
-    public MemberResponse addMember(@PathVariable Long id, @Valid @RequestBody AddMemberRequest request) {
+    public MemberResponse addMember(@AuthenticationPrincipal Long userId,
+                                     @PathVariable Long id,
+                                     @Valid @RequestBody AddMemberRequest request) {
+        // Mitglieder-Verwaltung bewusst Owner-only (wie delete oben).
+        listService.assertOwner(id, userId);
         // getByEmail() nur fuer die freundliche Fehlermeldung bei unbekannter
         // E-Mail - weitergereicht wird nur die ID, siehe ListService.addMember.
         AppUser user = userService.getByEmail(request.email());
@@ -104,7 +126,14 @@ public class ListController {
     }
 
     @DeleteMapping("/{id}/members/{userId}")
-    public ResponseEntity<Void> removeMember(@PathVariable Long id, @PathVariable Long userId) {
+    public ResponseEntity<Void> removeMember(@AuthenticationPrincipal Long requesterId,
+                                              @PathVariable Long id,
+                                              @PathVariable Long userId) {
+        // Ausnahme von "Owner-only": ein Mitglied darf sich selbst
+        // entfernen (die Liste verlassen), ohne Owner zu sein.
+        if (!requesterId.equals(userId)) {
+            listService.assertOwner(id, requesterId);
+        }
         listService.removeMember(id, userId);
         return ResponseEntity.noContent().build();
     }

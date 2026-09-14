@@ -210,4 +210,38 @@ class ListServiceIT extends AbstractIntegrationTest {
                 .isEqualTo(ListStatus.AKTIV);
     }
 
+    @Test
+    void assertAccessErlaubtOwner() {
+        ShoppingList list = listService.create("Test", null, owner());
+
+        listService.assertAccess(list.getId(), owner().getId()); // wirft nicht
+    }
+
+    @Test
+    void assertAccessErlaubtMitglied() {
+        ShoppingList list = listService.create("Test", null, owner());
+        listService.addMember(list.getId(), partner().getId());
+
+        listService.assertAccess(list.getId(), partner().getId()); // wirft nicht
+    }
+
+    @Test
+    void assertAccessLehntFremdenAb() {
+        ShoppingList list = listService.create("Test", null, owner());
+        AppUser fremder = appUserRepository.save(new AppUser("g-fremd-" + System.nanoTime(), "fremd@x.com", "Fremd"));
+
+        assertThatThrownBy(() -> listService.assertAccess(list.getId(), fremder.getId()))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void assertOwnerErlaubtOwnerLehntMitgliedAb() {
+        ShoppingList list = listService.create("Test", null, owner());
+        listService.addMember(list.getId(), partner().getId());
+
+        listService.assertOwner(list.getId(), owner().getId()); // wirft nicht
+        assertThatThrownBy(() -> listService.assertOwner(list.getId(), partner().getId()))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
 }

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
@@ -168,6 +169,26 @@ class ItemServiceIT extends AbstractIntegrationTest {
         assertThat(item.getId()).isNotNull();
         assertThat(item.getMenge()).isNull();
         assertThat(item.getEinheit()).isNull();
+    }
+
+    @Test
+    void assertAccessLoestListeUeberItemAufUndErlaubtOwner() {
+        AppUser owner = appUserRepository.save(new AppUser("g-owner-" + System.nanoTime(), "owner@x.com", "Owner"));
+        ShoppingList eigeneListe = listService.create("Eigene Liste", null, owner);
+        Item item = itemService.add(eigeneListe.getId(), "Milch", null, null, null);
+
+        itemService.assertAccess(item.getId(), owner.getId()); // wirft nicht
+    }
+
+    @Test
+    void assertAccessLehntFremdenUeberDasItemAb() {
+        AppUser owner = appUserRepository.save(new AppUser("g-owner2-" + System.nanoTime(), "owner2@x.com", "Owner2"));
+        AppUser fremder = appUserRepository.save(new AppUser("g-fremd-" + System.nanoTime(), "fremd@x.com", "Fremd"));
+        ShoppingList eigeneListe = listService.create("Eigene Liste", null, owner);
+        Item item = itemService.add(eigeneListe.getId(), "Milch", null, null, null);
+
+        assertThatThrownBy(() -> itemService.assertAccess(item.getId(), fremder.getId()))
+                .isInstanceOf(ForbiddenException.class);
     }
 
 }

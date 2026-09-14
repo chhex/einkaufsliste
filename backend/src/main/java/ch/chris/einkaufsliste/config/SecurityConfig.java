@@ -49,9 +49,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/ping",
                                 "/api/auth/**",
-                                // TODO: /api/dev/** ist eine Test-Hintertuer (siehe
-                                // DevLoginController) - vor "richtigem" Go-Live
-                                // entfernen oder hinter ein eigenes Profil stellen.
+                                // Test-Hintertuer (siehe DevLoginController) - existiert als
+                                // Bean im "prod"-Profil gar nicht mehr (@Profile("!prod")),
+                                // dieser permitAll-Eintrag ist dort also wirkungslos/harmlos.
                                 "/api/dev/**",
                                 "/actuator/**"
                         ).permitAll()

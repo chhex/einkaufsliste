@@ -1,5 +1,6 @@
 package ch.chris.einkaufsliste.web;
 
+import ch.chris.einkaufsliste.service.ForbiddenException;
 import ch.chris.einkaufsliste.web.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(new ErrorResponse(ex.getMessage()));
+    }
+
+    // Autorisierungs-Verweigerung (User ist authentifiziert, aber nicht
+    // Owner/Member der angefragten Liste) - siehe ListService.assertAccess/
+    // assertOwner. Bewusst 403, nicht 400/404: die Liste existiert u.U.
+    // durchaus, der User darf sie nur nicht sehen/aendern.
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbidden(ForbiddenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
