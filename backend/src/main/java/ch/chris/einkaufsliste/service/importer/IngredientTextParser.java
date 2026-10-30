@@ -7,13 +7,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Erkennt nur noch die Anzahl am Anfang einer Freitext-Zeile (z.B. "1½ ..."
- * oder "3 to 4 ...") und liefert den KOMPLETTEN Rest als Bezeichnung -
- * KEIN Einheit-Raten mehr (fruehere Version versuchte, ein bekanntes
- * Einheiten-Wort direkt nach der Menge zu erkennen und abzutrennen; das
- * lieferte zu oft falsche/unpassende Ergebnisse). Einheit bleibt bewusst
- * leer und wird vom Nutzer in der Vorschau oder spaeter direkt am Item
- * nachgetragen (seit Kurzem ohnehin optional, siehe Item-Entity).
+ * Erkennt die Anzahl am Anfang einer Freitext-Zeile (z.B. "1½ ...", "3 to 4 ..."
+ * oder "4,4kg ...") und liefert den Rest als Bezeichnung.
+ * <p>
+ * Einheiten werden NICHT geraten: Nur wenn Buchstaben DIREKT (ohne Leerzeichen)
+ * an der Zahl kleben ("4,4kg", "2Stück", "1Bund"), gilt dieses Wort woertlich
+ * als Einheit (kein Alias-Mapping, "Stück" bleibt "Stück"). Mit Leerzeichen
+ * ("2 Zwiebeln", "1½ tablespoons ...") bleibt der komplette Rest Bezeichnung
+ * und die Einheit leer.
+ * <p>
+ * Dezimalkomma und Dezimalpunkt werden akzeptiert ("4,4" = "4.4").
  * <p>
  * Ist die Anzahl ein Bereich ("3 to 4", "3-4"), wird der HOEHERE Wert
  * genommen (Anforderung: lieber zu viel einkaufen als zu wenig).
@@ -23,17 +26,17 @@ import java.util.regex.Pattern;
  */
 final class IngredientTextParser {
 
-    // Eine Zahl (inkl. optionalem Unicode-Bruch), optional gefolgt von
-    // "bis"/"to"/"-" und einer zweiten Zahl (Bereich) - danach der Rest der
-    // Zeile als Bezeichnung. Trennzeichen zwischen Zahl und Rest ist absichtlich
-    // OPTIONAL (\s*, nicht \s+): Formate wie "500g Butter" (Menge klebt direkt
-    // an der Einheit, kein Leerzeichen) sollen die Menge trotzdem erkennen -
-    // "g" landet dann einfach als Teil der Bezeichnung ("g Butter"), da wir
-    // keine Einheit mehr herausparsen.
+    private static final String NUM = "[0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:[.,][0-9]+)?";
+
+    // Gruppen: 1 = Zahl, 2 = obere Grenze eines Bereichs (optional, muss mit
+    // Ziffer/Bruch beginnen), 3 = Leerraum nach der Zahl (leer = Einheit klebt
+    // direkt an der Zahl), 4 = Rest der Zeile.
     private static final Pattern LEADING_QUANTITY = Pattern.compile(
-            "^\\s*([0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:\\.[0-9]+)?)"
-                    + "(?:\\s*(?:to|bis|-)\\s*([0-9]*[¼½¾⅓⅔⅛⅜⅝⅞]?[0-9]*(?:\\.[0-9]+)?))?"
-                    + "\\s*(.*)$");
+            "^\\s*(" + NUM + ")"
+                    + "(?:\\s*(?:to|bis|-)\\s*((?=[0-9¼½¾⅓⅔⅛⅜⅝⅞])" + NUM + "))?"
+                    + "(\\s*)(.*)$");
+
+    private static final Pattern GLUED_UNIT = Pattern.compile("^(\\p{L}+)(.*)$");
 
     private static final Map<Character, BigDecimal> UNICODE_FRACTIONS = Map.of(
             '¼', new BigDecimal("0.25"),
@@ -69,8 +72,19 @@ final class IngredientTextParser {
             }
         }
 
-        String bezeichnung = matcher.group(3).strip();
-        return new ParsedItem(bezeichnung, menge, null, kategorie);
+        String rest = matcher.group(4);
+        boolean zahlVorhanden = !matcher.group(1).isEmpty();
+        boolean klebtAnZahl = matcher.group(3).isEmpty();
+
+        if (zahlVorhanden && klebtAnZahl) {
+            Matcher unit = GLUED_UNIT.matcher(rest);
+            if (unit.matches() && !unit.group(2).strip().isEmpty()) {
+                // "4,4kg Rindsschulter" -> Einheit "kg" (woertlich), Name "Rindsschulter"
+                return new ParsedItem(unit.group(2).strip(), menge, unit.group(1), kategorie);
+            }
+        }
+
+        return new ParsedItem(rest.strip(), menge, null, kategorie);
     }
 
     private static BigDecimal parseQuantity(String raw) {
@@ -91,7 +105,7 @@ final class IngredientTextParser {
         }
 
         if (!wholePart.isEmpty()) {
-            whole = new BigDecimal(wholePart.toString());
+            whole = new BigDecimal(wholePart.toString().replace(',', '.'));
         }
 
         return whole.add(fraction).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros();

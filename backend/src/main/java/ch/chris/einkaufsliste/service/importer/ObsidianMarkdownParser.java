@@ -25,12 +25,15 @@ import java.util.regex.Pattern;
  * - [x] Milch
  * - [ ] 500g Butter
  * </pre>
+ * Mengen/Einheiten: "4,4kg Rindsschulter" ergibt Menge 4.4, Einheit "kg"
+ * (woertlich, direkt an der Zahl klebend), Bezeichnung "Rindsschulter".
  * Anders als bei NytCookingParser (Start-/End-Marker-Suche) ist hier das
  * Checkbox-Muster selbst der eindeutige Marker: jede Zeile, die NICHT
  * "- [ ]"/"- [x]" entspricht (Frontmatter, Titel, Prosa, Leerzeilen), wird
  * einfach ignoriert - kein Suchen nach Anfang/Ende noetig.
  * <p>
- * Markdown-Ueberschriften (#, ##, ...) werden als Kategorie fuer alle
+ * Markdown-Ueberschriften (#, ##, ...) sowie Zeilen, die nur aus **Text**
+ * bestehen, werden als Kategorie fuer alle
  * nachfolgenden Items uebernommen, bis zur naechsten Ueberschrift.
  * <p>
  * Der Abhak-Status ("[x]") wird bewusst IGNORIERT - importierte Items
@@ -42,6 +45,9 @@ import java.util.regex.Pattern;
 public class ObsidianMarkdownParser implements GroceryListParser {
 
     private static final Pattern HEADER = Pattern.compile("^#{1,6}\\s+(.*)$");
+    // Zeile, die NUR aus **Text** besteht, ist eine Kategorie (alternative
+    // zur #-Ueberschrift, z.B. "**Fleisch**").
+    private static final Pattern BOLD_LINE = Pattern.compile("^\\*\\*(.+?)\\*\\*$");
     private static final Pattern CHECKBOX = Pattern.compile("^\\s*[-*]\\s*\\[[ xX]]\\s*(.*)$");
 
     @Override
@@ -63,6 +69,12 @@ public class ObsidianMarkdownParser implements GroceryListParser {
             Matcher headerMatcher = HEADER.matcher(line);
             if (headerMatcher.matches()) {
                 currentKategorie = headerMatcher.group(1).strip();
+                continue;
+            }
+
+            Matcher boldMatcher = BOLD_LINE.matcher(line);
+            if (boldMatcher.matches()) {
+                currentKategorie = boldMatcher.group(1).strip();
                 continue;
             }
 

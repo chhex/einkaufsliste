@@ -76,16 +76,15 @@ class ObsidianMarkdownParserTest {
                 .filter(i -> i.bezeichnung().equals("Zwiebeln"))
                 .findFirst().orElseThrow();
         assertThat(zwiebeln.menge()).isEqualByComparingTo(new BigDecimal("2"));
-        assertThat(zwiebeln.einheit()).isNull(); // Einheit wird nicht mehr geraten
+        assertThat(zwiebeln.einheit()).isNull(); // mit Leerzeichen: keine Einheit
 
-        // "500g Butter" - Menge klebt direkt an der Einheit (kein Leerzeichen).
-        // "g" wird NICHT als Einheit erkannt, bleibt Teil der Bezeichnung.
+        // "500g Butter" - Einheit klebt direkt an der Zahl -> woertlich uebernommen.
         ParsedItem butter = items.stream()
-                .filter(i -> i.bezeichnung().contains("Butter"))
+                .filter(i -> i.bezeichnung().equals("Butter"))
                 .findFirst().orElseThrow();
         assertThat(butter.menge()).isEqualByComparingTo(new BigDecimal("500"));
-        assertThat(butter.einheit()).isNull();
-        assertThat(butter.bezeichnung()).isEqualTo("g Butter");
+        assertThat(butter.einheit()).isEqualTo("g");
+        assertThat(butter.bezeichnung()).isEqualTo("Butter");
     }
 
     @Test
@@ -109,6 +108,96 @@ class ObsidianMarkdownParserTest {
         List<ParsedItem> items = parser.parse("* [ ] Kaffee\n- [ ] Tee");
 
         assertThat(items).extracting(ParsedItem::bezeichnung).containsExactlyInAnyOrder("Kaffee", "Tee");
+    }
+
+    private static final String FETT_KATEGORIEN = """
+
+
+            **Fleisch**
+            - [ ] 4,4kg Rindsschulter
+            - [ ] 50g Rindertalg
+
+            **Gemüse**
+            - [ ] 2Stück Zwiebeln
+            - [ ] 1Stück Peperoni rot
+            - [ ] 1Stück Peperoni grün
+            - [ ] 1Knolle Knoblauch
+
+            **Kräuter**
+            - [ ] 1Bund Koriander
+
+            **Früchte**
+            - [ ] 1Stück Orange
+            - [ ] 2Stück Limetten
+
+            **Konserven**
+            - [ ] 800g Gehackte Tomaten
+            - [ ] 1Tube Tomatenmark
+            - [ ] 80g Grüne Oliven
+
+            **Gewürze**
+            - [ ] 1Pack Oregano getrocknet
+            - [ ] 1Pack Kreuzkümmel gemahlen
+            - [ ] 1Pack Knoblauchpulver
+            - [ ] 1Pack Paprika edelsüss
+            - [ ] 1Pack Schwarzer Pfeffer grob
+            - [ ] 1Pack Lorbeerblätter
+
+            **BBQ**
+            - [ ] 1Pack Räucherholz Eiche
+
+            **Haushalt**
+            - [ ] 4Stück Vakuumbeutel gross
+            ]]
+            """;
+
+    private ParsedItem finde(List<ParsedItem> items, String bezeichnung) {
+        return items.stream()
+                .filter(i -> i.bezeichnung().equals(bezeichnung))
+                .findFirst().orElseThrow();
+    }
+
+    @Test
+    void fettgedruckteZeilenSindKategorienUndKlebendeEinheitenWerdenErkannt() {
+        List<ParsedItem> items = parser.parse(FETT_KATEGORIEN);
+
+        // 2 + 4 + 1 + 2 + 3 + 6 + 1 + 1; die abschliessende "]]" wird ignoriert
+        assertThat(items).hasSize(20);
+        assertThat(items).extracting(ParsedItem::kategorie).doesNotContainNull();
+        assertThat(items).extracting(ParsedItem::kategorie).containsOnly(
+                "Fleisch", "Gemüse", "Kräuter", "Früchte", "Konserven", "Gewürze", "BBQ", "Haushalt");
+
+        ParsedItem schulter = finde(items, "Rindsschulter");
+        assertThat(schulter.menge()).isEqualByComparingTo(new BigDecimal("4.4"));
+        assertThat(schulter.einheit()).isEqualTo("kg");
+        assertThat(schulter.kategorie()).isEqualTo("Fleisch");
+
+        ParsedItem talg = finde(items, "Rindertalg");
+        assertThat(talg.menge()).isEqualByComparingTo(new BigDecimal("50"));
+        assertThat(talg.einheit()).isEqualTo("g");
+
+        ParsedItem zwiebeln = finde(items, "Zwiebeln");
+        assertThat(zwiebeln.menge()).isEqualByComparingTo(new BigDecimal("2"));
+        assertThat(zwiebeln.einheit()).isEqualTo("Stück"); // woertlich
+
+        // Rest der Zeile bleibt komplett Bezeichnung
+        ParsedItem oregano = finde(items, "Oregano getrocknet");
+        assertThat(oregano.einheit()).isEqualTo("Pack");
+        assertThat(oregano.kategorie()).isEqualTo("Gewürze");
+
+        assertThat(finde(items, "Knoblauch").einheit()).isEqualTo("Knolle");
+        assertThat(finde(items, "Koriander").einheit()).isEqualTo("Bund");
+        assertThat(finde(items, "Tomatenmark").einheit()).isEqualTo("Tube");
+        assertThat(finde(items, "Vakuumbeutel gross").menge()).isEqualByComparingTo(new BigDecimal("4"));
+    }
+
+    @Test
+    void ohneLeerzeichenAberOhneRestBleibtDasWortBezeichnung() {
+        List<ParsedItem> items = parser.parse("- [ ] 500g");
+
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).bezeichnung()).isEqualTo("g");
+        assertThat(items.get(0).einheit()).isNull();
     }
 
 }

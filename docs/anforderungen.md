@@ -159,9 +159,9 @@ Markdown-Checklisten (`- [ ]` / `- [x]`) aus Obsidian-Notizen importieren.
 
 **Ablauf**
 1. Das Checkbox-Muster selbst ist der Marker – jede Zeile, die nicht `- [ ]`/`- [x]` entspricht (Frontmatter, Titel, Prosa), wird ignoriert; kein Start-/End-Suchen wie bei NYT nötig
-2. Markdown-Überschriften (`## Gemüse`) werden als **Kategorie** für alle nachfolgenden Items übernommen, bis zur nächsten Überschrift
+2. Markdown-Überschriften (`## Gemüse`) sowie Zeilen, die nur aus `**Text**` bestehen (`**Fleisch**`), werden als **Kategorie** für alle nachfolgenden Items übernommen, bis zur nächsten Kategorie-Zeile
 3. Abhak-Status (`[x]`) wird **bewusst ignoriert** – importierte Items starten immer offen (Haken in einer wiederverwendeten Vorlage spiegeln meist den letzten Durchgang, nicht den aktuellen Stand)
-4. Menge/Einheit-Erkennung nutzt dieselbe Logik wie NYT Cooking (gemeinsame Utility-Klasse, keine Duplikation)
+4. Menge/Einheit-Erkennung nutzt eine gemeinsame Utility-Klasse (`IngredientTextParser`): Dezimalkomma und -punkt werden erkannt (`4,4` = 4.4); klebt ein Wort **direkt** an der Zahl (`4,4kg`, `2Stück`, `1Bund`), wird es **wörtlich** als Einheit übernommen (kein Alias-Mapping), der Rest ist die Bezeichnung (`2Stück Zwiebeln` → 2 / Stück / Zwiebeln). Mit Leerzeichen (`2 Zwiebeln`) bleibt die Einheit leer. Bereiche (`2-3`) → höherer Wert
 
 ### Gemeinsam für beide Formate
 
