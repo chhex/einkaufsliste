@@ -4,12 +4,12 @@
     let { listId, onImported } = $props();
 
     const SOURCES = [
-        { value: 'NYT_COOKING', label: 'NYT Cooking' },
+        { value: 'DELIMITED_TEXT', label: 'Einfacher Text' },
         { value: 'OBSIDIAN_MARKDOWN', label: 'Obsidian Markdown' }
     ];
 
     let open = $state(false);
-    let source = $state('NYT_COOKING');
+    let source = $state('DELIMITED_TEXT');
     let rawText = $state('');
     let parsing = $state(false);
     let importing = $state(false);
@@ -73,13 +73,13 @@
     function placeholderFor(src) {
         return src === 'OBSIDIAN_MARKDOWN'
             ? '## Gemüse\n- [ ] Tomaten\n- [ ] 2 Zwiebeln\n\n## Milchprodukte\n- [ ] 500g Butter'
-            : 'Your Grocery List\n1 Recipe\n\nRezeptname...\n-\n2 cups Mehl\n...';
+            : '1kg / Rindfleischschulter / Fleisch\n1Liter Apfelsaft ? Getränke\n2Stück - Zwiebeln - Gemüse\nButter; Brot';
     }
 
     function hintFor(src) {
         return src === 'OBSIDIAN_MARKDOWN'
-            ? 'Checkliste aus Obsidian hier einfügen. Überschriften (## Gemüse) werden als Kategorie übernommen, bereits abgehakte Punkte werden trotzdem als offen importiert.'
-            : 'Den "Your Grocery List"-Text von cooking.nytimes.com hier einfügen (inkl. Rezeptname/Portionen oben und Link unten – wird automatisch erkannt und ignoriert).';
+            ? 'Checkliste aus Obsidian hier einfügen. Überschriften (## Gemüse) oder fette Zeilen (**Fleisch**) werden als Kategorie übernommen, bereits abgehakte Punkte werden trotzdem als offen importiert. Zahl + Einheit direkt zusammen (4,4kg, 2Stück) werden als Menge und Einheit erkannt.'
+            : 'Ein Eintrag pro Zeile oder getrennt mit ; – Aufbau: Menge+Einheit, Bezeichnung, Kategorie (Kategorie optional). Trenner: /  ?  oder - (mit Leerzeichen davor und danach). Beispiel: 1kg / Rindfleisch / Fleisch. Die Einheit muss direkt an der Zahl kleben (1kg, 2Stück).';
     }
 </script>
 

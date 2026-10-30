@@ -62,15 +62,7 @@ final class IngredientTextParser {
             return new ParsedItem(line, BigDecimal.ONE, null, kategorie);
         }
 
-        BigDecimal menge = parseQuantity(matcher.group(1));
-        String zweiteZahl = matcher.group(2);
-        if (zweiteZahl != null && !zweiteZahl.isEmpty()) {
-            // Bereichsangabe (z.B. "3 to 4") - der HOEHERE Wert gewinnt.
-            BigDecimal obereGrenze = parseQuantity(zweiteZahl);
-            if (obereGrenze.compareTo(menge) > 0) {
-                menge = obereGrenze;
-            }
-        }
+        BigDecimal menge = mengeOf(matcher);
 
         String rest = matcher.group(4);
         boolean zahlVorhanden = !matcher.group(1).isEmpty();
@@ -85,6 +77,49 @@ final class IngredientTextParser {
         }
 
         return new ParsedItem(rest.strip(), menge, null, kategorie);
+    }
+
+    /** Menge (bei Bereichen der hoehere Wert) aus den Gruppen 1/2 des Treffers. */
+    private static BigDecimal mengeOf(Matcher matcher) {
+        BigDecimal menge = parseQuantity(matcher.group(1));
+        String zweiteZahl = matcher.group(2);
+        if (zweiteZahl != null && !zweiteZahl.isEmpty()) {
+            // Bereichsangabe (z.B. "3 to 4") - der HOEHERE Wert gewinnt.
+            BigDecimal obereGrenze = parseQuantity(zweiteZahl);
+            if (obereGrenze.compareTo(menge) > 0) {
+                menge = obereGrenze;
+            }
+        }
+        return menge;
+    }
+
+    /** Reine Mengenangabe: Zahl, optional mit Einheit. */
+    record Quantity(BigDecimal menge, String einheit) {
+    }
+
+    /**
+     * Prueft, ob der Text AUSSCHLIESSLICH aus Menge (+ optionaler Einheit)
+     * besteht, z.B. "1kg", "2", "500 g". Liefert sonst null.
+     *
+     * @param erlaubeLeerzeichenVorEinheit false: Einheit muss direkt an der Zahl
+     *                                     kleben ("1kg"), sonst waere "2 Zwiebeln"
+     *                                     nicht von "2 Stueck" unterscheidbar.
+     */
+    static Quantity parseQuantityOnly(String text, boolean erlaubeLeerzeichenVorEinheit) {
+        Matcher matcher = LEADING_QUANTITY.matcher(text.strip());
+        if (!matcher.matches() || matcher.group(1).isEmpty()) {
+            return null;
+        }
+        BigDecimal menge = mengeOf(matcher);
+        String rest = matcher.group(4).strip();
+        if (rest.isEmpty()) {
+            return new Quantity(menge, null);
+        }
+        if (!rest.matches("\\p{L}+")) {
+            return null;
+        }
+        boolean klebt = matcher.group(3).isEmpty();
+        return (klebt || erlaubeLeerzeichenVorEinheit) ? new Quantity(menge, rest) : null;
     }
 
     private static BigDecimal parseQuantity(String raw) {

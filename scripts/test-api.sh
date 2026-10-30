@@ -91,10 +91,10 @@ curl -sf "$BASE_URL/api/units" -H "$AUTH_HEADER" | tee /dev/stderr > /dev/null
 echo -e "\n--- 17. Kategorien-Vorschlagsliste abrufen ---"
 curl -sf "$BASE_URL/api/categories" -H "$AUTH_HEADER" | tee /dev/stderr > /dev/null
 
-echo -e "\n--- 18. Import-Vorschau (NYT Cooking) ---"
-curl -sf -X POST "$BASE_URL/api/import/NYT_COOKING" \
+echo -e "\n--- 18. Import-Vorschau (Delimited Text) ---"
+curl -sf -X POST "$BASE_URL/api/import/DELIMITED_TEXT" \
     -H "Content-Type: application/json" -H "$AUTH_HEADER" \
-    -d '{"rawText":"Titel\n1 Portion\n-\n2 cups Mehl\n1 lime, halved\n----------\nFooter"}' \
+    -d '{"rawText":"2kg / Mehl / Backen; 1Liter Milch\nBrot"}' \
     | tee /dev/stderr > /dev/null
 
 echo -e "\n--- 19. Alle Listen des Owners ---"

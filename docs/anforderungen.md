@@ -76,7 +76,7 @@ Unit (erweiterbar, vorbefüllt) {
 - Einheit/Kategorie werden in der UI als Kombi-Feld (Eingabe + Dropdown-Vorschläge aus `unit`/`category`) dargestellt — kombiniert "feste Werte schnell auswählbar" mit der Freiheit, trotzdem beliebigen Text einzugeben (wichtig für Imports)
 
 ### Einheiten
-- Item-Einheit ist **Freitext**, kein festes Vokabular/kein FK — wichtig für Imports mit fremden Masssystemen (z. B. "cups", "tbsp" aus NYT Cooking) und individuelle Angaben ("Flasche", "Prise")
+- Item-Einheit ist **Freitext**, kein festes Vokabular/kein FK — wichtig für Imports mit fremden Masssystemen (z. B. "cups", "Bund", "Pack") und individuelle Angaben ("Flasche", "Prise")
 - Zusätzlich eine kleine, **erweiterbare** `unit`-Tabelle als reine Vorschlagsliste/Autocomplete in der UI (kein Zwang, nur Hilfestellung)
 - Wird mit sinnvollen Standardwerten vorbefüllt: Stk, kg, g, l, ml, Becher, Bund, Packung, Dose, ...
 - Nutzer können bei Bedarf eigene Einheiten zur Vorschlagsliste ergänzen, sind aber nie darauf beschränkt
@@ -136,29 +136,33 @@ Hibernate läuft strikt mit `ddl-auto: validate` und generiert nie selbst Schema
 
 Zwei unterstützte Formate (per Strategy Pattern, explizite Auswahl durch den Nutzer):
 
-### NYT Cooking
+### Einfacher Text (`DELIMITED_TEXT`)
 
-Rezept-Exporte ("Your Grocery List") per Copy-Paste importieren.
+Frei eintippbarer Text, auch von Hand oder auf dem Handy. (Der frühere NYT-Cooking-Parser ist entfernt; Rezept-Listen werden vor dem Einfügen von Hand an dieses Format angepasst.)
 
-**Herausforderungen im Rohtext**
-- Kopfzeile (Rezeptname, Portionenanzahl) ist Kontext, kein Item
-- Mengenangaben oft als Unicode-Brüche (½, ¼, ⅓) statt Dezimalzahlen
-- Zusätze wie "plus more" / "plus more as needed" – keine feste Menge
-- Alternativen in einem Item ("or turkey or chicken, or vegan meat") – mehrdeutig
-- Freitext-Hinweise wie "for serving" gehören oft noch zum vorherigen Item
-- Footer mit Rezept-Link soll ignoriert werden
+**Aufbau:** `[Menge+Einheit] Bezeichnung [Kategorie]` – die Kategorie ist optional.
 
-**Ablauf**
-1. Zutaten stehen zwischen der ersten Zeile, die nur aus einem einzelnen `-` besteht, und der Zeile, die nur aus mehreren `-` besteht (`----------`) – alles davor/danach wird ignoriert
-2. Menge (Unicode-Brüche → Dezimal) und Einheit werden pro Zeile erkannt, Rest wird Bezeichnung
-3. Kategorie bleibt immer leer ("Unkategorisiert") – NYT liefert keine Kategorien
+- **Eintragsende:** `;` oder Zeilenumbruch
+- **Feld-Trenner (fest, keine Auto-Erkennung):** `/`, `?` und ` - ` (Bindestrich nur mit Leerzeichen davor und danach, damit `Coca-Cola` ein Name bleibt). Die Trenner dürfen in einem Text gemischt werden. Bewusst nicht dabei: Komma und Punkt (Dezimalzahlen, `Äpfel, rot`) sowie `|` (auf der Schweizer iOS-Tastatur mühsam). Ein `/` zwischen zwei Ziffern (`1/2`) ist kein Trenner (Brüche werden aber nicht ausgewertet – besser `0,5` schreiben)
+- **Zwei Felder:** ist das erste eine reine Menge (Zahl, Einheit direkt angeklebt, z. B. `1kg`), gilt es als Menge → `1kg / Rindfleischschulter`; sonst Bezeichnung + Kategorie → `Apfelsaft / Getränke`
+- **Ohne Trenner:** nur Menge+Einheit am Anfang wird abgetrennt (`1Liter Apfelsaft`), keine Kategorie
+- **Einheiten wörtlich** (kein Mapping, keine feste Liste) – das System passt sich dem Nutzer an
+- Dezimalkomma und -punkt werden erkannt (`1,5l`)
+
+Beispiele:
+```
+1kg / Rindfleischschulter / Fleisch ; 1Liter / Apfelsaft / Getränke
+2Stück - Zwiebeln - Gemüse
+500g Butter ? Milchprodukte
+Brot
+```
 
 ### Obsidian Markdown
 
 Markdown-Checklisten (`- [ ]` / `- [x]`) aus Obsidian-Notizen importieren.
 
 **Ablauf**
-1. Das Checkbox-Muster selbst ist der Marker – jede Zeile, die nicht `- [ ]`/`- [x]` entspricht (Frontmatter, Titel, Prosa), wird ignoriert; kein Start-/End-Suchen wie bei NYT nötig
+1. Das Checkbox-Muster selbst ist der Marker – jede Zeile, die nicht `- [ ]`/`- [x]` entspricht (Frontmatter, Titel, Prosa), wird ignoriert
 2. Markdown-Überschriften (`## Gemüse`) sowie Zeilen, die nur aus `**Text**` bestehen (`**Fleisch**`), werden als **Kategorie** für alle nachfolgenden Items übernommen, bis zur nächsten Kategorie-Zeile
 3. Abhak-Status (`[x]`) wird **bewusst ignoriert** – importierte Items starten immer offen (Haken in einer wiederverwendeten Vorlage spiegeln meist den letzten Durchgang, nicht den aktuellen Stand)
 4. Menge/Einheit-Erkennung nutzt eine gemeinsame Utility-Klasse (`IngredientTextParser`): Dezimalkomma und -punkt werden erkannt (`4,4` = 4.4); klebt ein Wort **direkt** an der Zahl (`4,4kg`, `2Stück`, `1Bund`), wird es **wörtlich** als Einheit übernommen (kein Alias-Mapping), der Rest ist die Bezeichnung (`2Stück Zwiebeln` → 2 / Stück / Zwiebeln). Mit Leerzeichen (`2 Zwiebeln`) bleibt die Einheit leer. Bereiche (`2-3`) → höherer Wert
@@ -166,7 +170,7 @@ Markdown-Checklisten (`- [ ]` / `- [x]`) aus Obsidian-Notizen importieren.
 ### Gemeinsam für beide Formate
 
 - **Vorschau vor Übernahme** – geparste Items (inkl. Kategorie) werden angezeigt und können vom Nutzer korrigiert werden, einzelne Zeilen abwählbar
-- Nicht erkennbare Mengen/Einheiten fallen auf Menge 1 / Einheit "Stk" zurück, ganze Zeile wird Bezeichnung
+- Nicht erkennbare Mengen fallen auf Menge 1 zurück (Einheit leer), ganze Zeile wird Bezeichnung
 
 ## 7. Offene Punkte (für später)
 

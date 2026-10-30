@@ -27,8 +27,7 @@ import java.util.regex.Pattern;
  * </pre>
  * Mengen/Einheiten: "4,4kg Rindsschulter" ergibt Menge 4.4, Einheit "kg"
  * (woertlich, direkt an der Zahl klebend), Bezeichnung "Rindsschulter".
- * Anders als bei NytCookingParser (Start-/End-Marker-Suche) ist hier das
- * Checkbox-Muster selbst der eindeutige Marker: jede Zeile, die NICHT
+ * Das Checkbox-Muster ist hier selbst der eindeutige Marker: jede Zeile, die NICHT
  * "- [ ]"/"- [x]" entspricht (Frontmatter, Titel, Prosa, Leerzeilen), wird
  * einfach ignoriert - kein Suchen nach Anfang/Ende noetig.
  * <p>
