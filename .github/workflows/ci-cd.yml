@@ -1,16 +1,17 @@
 name: CI/CD
 
-# Vorher zwei entkoppelte Workflows (backend-ci.yml, deploy.yml) - deploy.yml
-# triggerte unabhaengig davon, ob die Tests ueberhaupt liefen/gruen waren.
-# Jetzt EIN Workflow: deploy braucht IMMER einen erfolgreichen test-Job
-# (kein Path-Filter mehr auf "backend/**" - Tests laufen bei JEDEM Push auf
-# main, damit auch reine Frontend-/Docker-Aenderungen nicht ungeprueft
-# deployt werden).
+# EIN Workflow: deploy braucht IMMER einen erfolgreichen test-Job.
+# test laeuft auf GitHub-Runnern (Testcontainers, Maven), deploy auf dem
+# Self-hosted Runner auf NUC 2 (Keller), hinter Cloudflare Tunnel "nuc2".
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -34,21 +35,42 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, nuc2]
+    concurrency:
+      group: deploy-comprarli
+      cancel-in-progress: false
+    env:
+      COMPOSE: docker compose -f docker-compose.nuc.yml --env-file /opt/comprarli/.env
+
     steps:
-      - name: Deploy via SSH ausführen
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cd /apps/einkaufsliste || exit
+      - name: Code auschecken
+        uses: actions/checkout@v4
 
-            git pull
+      - name: DB starten und App-User sicherstellen
+        # bootstrap-app-user.sh ist idempotent (IF NOT EXISTS, GRANTs) und
+        # laeuft deshalb bei jedem Deploy - ersetzt das manuelle bootstrap-prod.sh.
+        run: |
+          set -e
+          $COMPOSE up -d --wait db
+          set -a; . /opt/comprarli/.env; set +a
+          docker exec \
+            -e APP_DB_USER="$DB_APP_USER" -e APP_DB_PASSWORD="$DB_APP_PASSWORD" \
+            einkaufsliste-db sh -c \
+            'PGHOST=localhost PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD" PGDATABASE="$POSTGRES_DB" /scripts/bootstrap-app-user.sh'
 
-            # Bewusst OHNE vorangehendes "down": "up --build -d" baut/startet
-            # nur geaenderte Services neu, der db-Container laeuft ohne
-            # Unterbruch weiter. Frueher riss "down" vor "up" bei JEDEM
-            # Deploy auch die DB kurz runter, unnoetig.
-            docker compose -f docker-compose.prod.yml up --build -d
+      - name: Build & Start
+        run: |
+          set -e
+          $COMPOSE up --build -d --remove-orphans
+          docker image prune -f
+
+      - name: Smoke-Test (Backend-Health und Frontend)
+        run: |
+          for i in $(seq 1 45); do
+            if docker exec einkaufsliste-backend wget -qO- http://localhost:8080/actuator/health | grep -q '"UP"'; then
+              echo "Backend UP"; break
+            fi
+            sleep 2
+          done
+          docker exec einkaufsliste-backend wget -qO- http://localhost:8080/actuator/health | grep -q '"UP"'
+          curl -fsS -o /dev/null http://127.0.0.1:8082/ && echo "Frontend OK"
