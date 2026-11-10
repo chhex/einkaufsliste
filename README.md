@@ -69,6 +69,35 @@ npm run dev
 Frontend läuft auf `http://localhost:5173` (in Google Cloud Console als
 "Authorized JavaScript origin" hinterlegt, siehe Abschnitt "Auth" unten).
 
+### Mehrere lokale Instanzen (optional)
+
+Für Vergleiche oder Experimente können mehrere Klone gleichzeitig laufen. In
+der `.env` des jeweiligen Klons setzen (Beispiel zweite Instanz):
+
+```
+COMPOSE_PROJECT_NAME=einkaufsliste-b
+DB_PORT=5433
+BACKEND_PORT=8081
+CORS_ALLOWED_ORIGINS=http://localhost:5174
+```
+
+Dann dort wie gewohnt `docker compose up -d db`, `./bootstrap-local.sh`,
+`docker compose up --build -d`. Jeder Projektname hat eigene Container und ein
+eigenes DB-Volume. Das Frontend startet auf eigenem Port und spricht das
+passende Backend an:
+
+```bash
+cd frontend
+# .env: VITE_API_BASE_URL=http://localhost:8081
+npm run dev -- --port 5174
+```
+
+**Test vom iPhone/iPad im selben WLAN:** `npm run dev -- --host` startet den
+Dev-Server im Netz; die Adresse `http://<mac-ip>:5173` muss dann in
+`CORS_ALLOWED_ORIGINS` stehen, und `VITE_API_BASE_URL` muss leer sein (sonst
+zeigt `localhost` auf das Gerät selbst). Die Aufrufe laufen dann über den
+Vite-Proxy (`VITE_API_PROXY_TARGET`).
+
 ### Backend-Tests
 
 Zwei Kategorien, per Namenskonvention getrennt:

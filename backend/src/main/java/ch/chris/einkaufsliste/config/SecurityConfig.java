@@ -1,6 +1,7 @@
 package ch.chris.einkaufsliste.config;
 
 import ch.chris.einkaufsliste.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -13,6 +14,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,6 +30,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /**
+     * Erlaubte CORS-Origins, kommagetrennt (app.cors.allowed-origins, per
+     * Umgebungsvariable CORS_ALLOWED_ORIGINS ueberschreibbar - siehe
+     * application.yml). Noetig z.B. fuer mehrere lokale Frontend-Ports oder
+     * den Test vom iPhone/iPad ueber die LAN-Adresse des Macs.
+     */
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -72,14 +83,13 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // localhost:8000 ist fuer die Standalone-Google-Login-Testseite
-        // (scripts/auth-test/, per "python3 -m http.server" served).
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:5173",
-                "http://localhost:8000",
-                "https://comprarli.com",
-                "https://www.comprarli.com"
-        ));
+        // Defaults (application.yml): localhost:5173 (Vite), localhost:8000
+        // (Standalone-Google-Login-Testseite, scripts/auth-test/) und die
+        // Produktions-Domains.
+        config.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

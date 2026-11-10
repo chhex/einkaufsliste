@@ -1,9 +1,11 @@
-name: einkaufsliste-local
+# Projektname per COMPOSE_PROJECT_NAME ueberschreibbar (z.B. in .env), damit
+# mehrere Klone/Varianten nebeneinander laufen koennen: jeder Projektname
+# bekommt eigene Container und ein eigenes DB-Volume.
+name: ${COMPOSE_PROJECT_NAME:-einkaufsliste-local}
 
 services:
   db:
     image: postgres:17-alpine
-    container_name: einkaufsliste-db-local
     environment:
       POSTGRES_DB: ${DB_NAME:-einkaufsliste}
       # Admin-User: besitzt das Schema, wird von Flyway fuer Migrationen genutzt.
@@ -12,7 +14,7 @@ services:
       POSTGRES_USER: ${DB_ADMIN_USER:?bitte .env aus .env.example erstellen}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?bitte .env aus .env.example erstellen}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - einkaufsliste-db-data-local:/var/lib/postgresql/data
       - ./backend/db-init:/scripts:ro
@@ -25,7 +27,6 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: einkaufsliste-backend-local
     depends_on:
       db:
         condition: service_healthy
@@ -38,8 +39,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-in-production-32bytes-min}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-1440}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
 
 volumes:
   einkaufsliste-db-data-local:

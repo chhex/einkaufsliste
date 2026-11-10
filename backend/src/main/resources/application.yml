@@ -26,6 +26,9 @@ server:
   forward-headers-strategy: framework
 
 app:
+  cors:
+    # Kommagetrennte Liste erlaubter Browser-Origins (Spring-Origin-Muster).
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8000,https://comprarli.com,https://www.comprarli.com}
   jwt:
     # ACHTUNG: Default nur fuer lokale Entwicklung - in Produktion
     # MUSS JWT_SECRET als eigene, zufaellige, geheime Env-Var gesetzt werden.
